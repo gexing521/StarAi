@@ -62,6 +62,13 @@ Protocol profiles (MVP):
 5. `bedrock` (if enabled by runtime support)
 6. `custom_http` (advanced/experimental later)
 
+For signed-in StarAI accounts, Electron Main sends chat to
+`https://starlinkaisite.com/pg/chat/completions` with the model and group from
+the bound account route. It identifies the app with `User-Agent: StarAI/<version>`,
+`X-StarAI-Client: starai-desktop` and `X-StarAI-Version: <version>`.
+Only chat bound to the exact group `claude企业组` adds
+`anthropic-version: 2023-06-01` and `X-StarAI-Route: claude-enterprise`.
+
 OpenCode Go is exposed as a named `opencode_go` API-style preset. It remains
 inside the `openai_compatible` provider path: the preset fixes the endpoint to
 `https://opencode.ai/zen/go/v1`, uses Bearer API-key authentication, discovers

@@ -170,8 +170,13 @@ export class StarAiSession {
   async submitChat(route: {accountId: number; group: string; model: string}, body: RecordValue, signal: AbortSignal) {
     const session = await this.session();
     if (!session || session.account.id !== route.accountId) throw required();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (route.group === "claude企业组") {
+      headers["anthropic-version"] = "2023-06-01";
+      headers["X-StarAI-Route"] = "claude-enterprise";
+    }
     const result = await this.request("/pg/chat/completions", {
-      method: "POST", headers: { "Content-Type": "application/json" }, signal,
+      method: "POST", headers, signal,
       body: JSON.stringify({ ...body, model: route.model, group: route.group }),
     }, session.token);
     if (result.status === 401 && this.current === session) this.current = null;

@@ -7,6 +7,18 @@ Render the normal Composer toolbar for an active remote session that denies Stop
 > Part of the [E2E test plan](../04-e2e-test-plan.md). Provider setup, credentials, OAuth, model catalogs, wire protocols, usage, and hosted search.
 > Scenario template, gates, and traceability live in the plan.
 
+## E2E-PROVIDER-starai-claude-enterprise
+
+In a packaged StarAI app, sign in with an account that can select
+`claude企业组`. In the Composer select Claude, that exact group and
+`claude-haiku-5-5`. Send an arithmetic question and verify the answer in the
+chat. Match its timestamp, account, group and model to a streaming
+`/pg/chat/completions` request in the relay log.
+
+`apps/desktop/test/star-ai-session.test.mjs` checks the outbound version,
+route and app identity headers. It also covers session refresh and a request
+bound to `claude企业组不限客户端` whose body names the enterprise group.
+
 ## E2E-USAGE-explicit-zero-cache
 
 - Complete a controlled Pi request with nonzero input/output and explicit zero

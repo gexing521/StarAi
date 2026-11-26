@@ -124,6 +124,32 @@ test("chat pins the origin, route, account and selected group", async () => {
   assert.equal(init.headers.get("X-StarAI-Version"), "0.0.1");
 });
 
+test("Claude enterprise chat adds its protocol and route headers only for the bound group", async () => {
+  const requests = [];
+  const account = new StarAiSession(async (url, init) => {
+    requests.push({ path: new URL(url).pathname, headers: init.headers });
+    if (url.endsWith(STARAI_REFRESH)) return sessionReply();
+    return Response.json({});
+  }, async () => true, "0.2.3");
+  const signal = new AbortController().signal;
+  const route = { accountId: 42, model: "claude-haiku-5-5", group: "claude企业组" };
+  await account.submitChat(route, { messages: [], stream: true }, signal);
+  await account.submitChat({ ...route, group: "claude企业组不限客户端" }, { group: route.group, messages: [] }, signal);
+
+  const [refresh, enterprise, other] = requests;
+  assert.equal(enterprise.path, "/pg/chat/completions");
+  assert.equal(enterprise.headers.get("anthropic-version"), "2023-06-01");
+  assert.equal(enterprise.headers.get("X-StarAI-Route"), "claude-enterprise");
+  assert.equal(enterprise.headers.get("User-Agent"), "StarAI/0.2.3");
+  assert.equal(enterprise.headers.get("X-StarAI-Client"), "starai-desktop");
+  assert.equal(enterprise.headers.get("X-StarAI-Version"), "0.2.3");
+  assert.equal(enterprise.headers.get("Authorization"), "Bearer session-token");
+  for (const { headers } of [refresh, other]) {
+    assert.equal(headers.has("anthropic-version"), false);
+    assert.equal(headers.has("X-StarAI-Route"), false);
+  }
+});
+
 test("session requests carry StarAI client identification headers with the app version", async () => {
   const seen = [];
   const account = new StarAiSession(async (url, init) => {
