@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { sortStarAiModels, STARAI_PROVIDER_ID, type StarAiCatalog, type StarAiGroup, type StarAiSelection } from "@pi-desktop/shared";
-import type { BrowserWindow } from "electron";
+import { app, type BrowserWindow } from "electron";
 import type { HostProcess } from "./host-process";
 import { hasStarAiCookie, openStarAiLogin, starAiPartition } from "./star-ai-login";
 import { StarAiSession, starAiError } from "./star-ai-session";
@@ -35,10 +35,12 @@ export function createStarAiAccount(
   options?: {
     ensureCatalogLoaded?: () => Promise<unknown>;
     resolveModelReleaseDate?: (modelId: string) => string | undefined;
+    clientVersion?: string;
   },
 ) {
   const partition = starAiPartition();
-  const account = new StarAiSession((url, init) => partition.fetch(url, init), () => hasStarAiCookie(partition));
+  const clientVersion = options?.clientVersion ?? (typeof app?.getVersion === "function" ? app.getVersion() : undefined);
+  const account = new StarAiSession((url, init) => partition.fetch(url, init), () => hasStarAiCookie(partition), clientVersion);
   const makeTransport = () => createStarAiTransport((route, body, signal) => account.submitChat(route, body, signal));
   type Bound = { accountId: string; route: Route; transport: ReturnType<typeof makeTransport>; baseUrl: string; secretValue: string };
   let active = new Map<string, Bound>();

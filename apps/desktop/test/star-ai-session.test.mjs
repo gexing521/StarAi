@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { STARAI_ORIGIN, STARAI_REFRESH, StarAiSession } from "../electron/main/star-ai-session.ts";
+import {
+  STARAI_CLIENT_ID,
+  STARAI_CLIENT_NAME,
+  STARAI_ORIGIN,
+  STARAI_REFRESH,
+  StarAiSession,
+} from "../electron/main/star-ai-session.ts";
 import { starAiModelFamily } from "../../../packages/shared/src/star-ai-model-family.ts";
 
 import { STARAI_SERVICES, starAiGroupService, sortStarAiGroupsByRatio } from "../../../packages/shared/src/star-ai-services.ts";
@@ -113,6 +119,34 @@ test("chat pins the origin, route, account and selected group", async () => {
   assert.deepEqual(JSON.parse(init.body), { ...body, group: route.group, model: route.model });
   assert.equal(init.signal, signal);
   assert.equal(init.redirect, "error");
+  assert.equal(init.headers.get("User-Agent"), `${STARAI_CLIENT_NAME}/0.0.1`);
+  assert.equal(init.headers.get("X-StarAI-Client"), STARAI_CLIENT_ID);
+  assert.equal(init.headers.get("X-StarAI-Version"), "0.0.1");
+});
+
+test("session requests carry StarAI client identification headers with the app version", async () => {
+  const seen = [];
+  const account = new StarAiSession(async (url, init) => {
+    seen.push({
+      url,
+      userAgent: init.headers.get("User-Agent"),
+      client: init.headers.get("X-StarAI-Client"),
+      version: init.headers.get("X-StarAI-Version"),
+    });
+    if (url.endsWith(STARAI_REFRESH)) return sessionReply();
+    return new Response("data: [DONE]\n\n");
+  }, async () => true, "0.2.3");
+  await account.submitChat(
+    { accountId: 42, group: "default", model: "model-a" },
+    { messages: [], stream: true },
+    new AbortController().signal,
+  );
+  assert.equal(seen.length, 2);
+  for (const request of seen) {
+    assert.equal(request.userAgent, `${STARAI_CLIENT_NAME}/0.2.3`);
+    assert.equal(request.client, STARAI_CLIENT_ID);
+    assert.equal(request.version, "0.2.3");
+  }
 });
 
 test("an expired or malformed account and a refresh completing after logout cannot authorize", async () => {

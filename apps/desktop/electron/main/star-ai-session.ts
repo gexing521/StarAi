@@ -3,6 +3,9 @@ import { isStarAiChatModel, type StarAiGroup } from "@pi-desktop/shared";
 export const STARAI_ORIGIN = "https://starlinkaisite.com";
 export const STARAI_COOKIE = "new_api_refresh";
 export const STARAI_REFRESH = "/api/user/auth/refresh";
+export const STARAI_CLIENT_NAME = "StarAI";
+export const STARAI_CLIENT_ID = "starai-desktop";
+const DEFAULT_CLIENT_VERSION = "0.0.1";
 
 export function starAiError(code: string, message: string) {
   return Object.assign(new Error(message), { errorCode: code });
@@ -21,13 +24,17 @@ export class StarAiSession {
   private revision = 0;
   private readonly fetch: (url: string, init: RequestInit) => Promise<Response>;
   private readonly hasCookie: () => Promise<boolean>;
+  private readonly clientVersion: string;
 
   constructor(
     fetch: (url: string, init: RequestInit) => Promise<Response>,
     hasCookie: () => Promise<boolean>,
+    clientVersion?: string,
   ) {
     this.fetch = fetch;
     this.hasCookie = hasCookie;
+    const trimmed = clientVersion?.trim();
+    this.clientVersion = trimmed ? trimmed : DEFAULT_CLIENT_VERSION;
   }
 
   forget() {
@@ -40,6 +47,9 @@ export class StarAiSession {
     const headers = new Headers(init.headers);
     headers.set("Origin", STARAI_ORIGIN);
     headers.set("Accept", "application/json");
+    headers.set("User-Agent", `${STARAI_CLIENT_NAME}/${this.clientVersion}`);
+    headers.set("X-StarAI-Client", STARAI_CLIENT_ID);
+    headers.set("X-StarAI-Version", this.clientVersion);
     if (token) headers.set("Authorization", `Bearer ${token}`);
     return this.fetch(STARAI_ORIGIN + path, {
       ...init, headers, redirect: "error", cache: "no-store", credentials: "include",
