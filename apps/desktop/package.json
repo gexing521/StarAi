@@ -1,13 +1,13 @@
 {
   "name": "@pi-desktop/desktop",
-  "version": "0.24.1",
+  "version": "0.0.1",
   "desktopName": "pi-desktop.desktop",
   "private": true,
   "description": "StarAI Electron application",
-  "homepage": "https://github.com/gexing521/StarAi-Desktop",
+  "homepage": "https://github.com/gexing521/StarAi",
   "author": {
     "name": "StarAI",
-    "url": "https://github.com/gexing521/StarAi-Desktop"
+    "url": "https://github.com/gexing521/StarAi"
   },
   "main": "./out/main/index.js",
   "type": "module",
@@ -91,7 +91,7 @@
       {
         "provider": "github",
         "owner": "gexing521",
-        "repo": "StarAi-Desktop"
+        "repo": "StarAi"
       }
     ],
     "extraMetadata": {

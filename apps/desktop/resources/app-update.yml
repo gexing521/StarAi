@@ -1,4 +1,4 @@
 provider: github
 owner: gexing521
-repo: StarAi-Desktop
+repo: StarAi
 updaterCacheDirName: starai-desktop-updater

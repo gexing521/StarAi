@@ -36,9 +36,9 @@ hooks.deregister();
 
 const noopLogger = { app: () => {} };
 
-test("StarAI repo metadata and feedback links point to gexing521/StarAi-Desktop", () => {
-  assert.equal(GITHUB_REPO, "gexing521/StarAi-Desktop");
-  assert.equal(RELEASES_URL, "https://github.com/gexing521/StarAi-Desktop/releases");
+test("StarAI repo metadata and feedback links point to gexing521/StarAi", () => {
+  assert.equal(GITHUB_REPO, "gexing521/StarAi");
+  assert.equal(RELEASES_URL, "https://github.com/gexing521/StarAi/releases");
   assert.equal(GITHUB_RELEASES_URL, RELEASES_URL);
   const url = new URL(
     buildBugReportUrl({
@@ -49,7 +49,7 @@ test("StarAI repo metadata and feedback links point to gexing521/StarAi-Desktop"
       hostVersion: "0.24.0-beta.5",
     }),
   );
-  assert.equal(url.pathname, "/gexing521/StarAi-Desktop/issues/new");
+  assert.equal(url.pathname, "/gexing521/StarAi/issues/new");
   assert.match(url.searchParams.get("environment") ?? "", /^StarAI 0\.24\.0-beta\.5/);
 });
 
@@ -106,7 +106,7 @@ test("updater falls back to GitHub Releases API when feed manifest is absent", a
       Response.json({
         tag_name: "v0.25.0",
         body: "StarAI 0.25.0 release notes",
-        html_url: "https://github.com/gexing521/StarAi-Desktop/releases/tag/v0.25.0",
+        html_url: "https://github.com/gexing521/StarAi/releases/tag/v0.25.0",
         draft: false,
       }),
   });
@@ -115,7 +115,7 @@ test("updater falls back to GitHub Releases API when feed manifest is absent", a
   assert.equal(state2.availableVersion, "0.25.0");
   assert.equal(
     state2.releasesUrl,
-    "https://github.com/gexing521/StarAi-Desktop/releases/tag/v0.25.0",
+    "https://github.com/gexing521/StarAi/releases/tag/v0.25.0",
   );
   assert.equal(state2.mode, "manual");
 });

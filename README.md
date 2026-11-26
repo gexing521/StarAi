@@ -2,7 +2,7 @@
 
 <img src="docs/public/readme/logo.png" alt="PI-Desktop" width="108" />
 
-# PI-Desktop
+# StarAI
 
 ### A modular desktop workspace for AI agents
 
@@ -12,16 +12,16 @@ Local-first · Model-agnostic · Plugin-powered · macOS / Windows / Linux
 
 <br />
 
-[![Release](https://img.shields.io/github/v/release/vastsa/PI-Desktop?label=release)](https://github.com/vastsa/PI-Desktop/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/vastsa/PI-Desktop/total?label=downloads)](https://github.com/vastsa/PI-Desktop/releases)
-[![Stars](https://img.shields.io/github/stars/vastsa/PI-Desktop?style=flat\&label=stars)](https://github.com/vastsa/PI-Desktop/stargazers)
-[![CI](https://github.com/vastsa/PI-Desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/vastsa/PI-Desktop/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/vastsa/PI-Desktop)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/gexing521/StarAi?label=release)](https://github.com/gexing521/StarAi/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/gexing521/StarAi/total?label=downloads)](https://github.com/gexing521/StarAi/releases)
+[![Stars](https://img.shields.io/github/stars/gexing521/StarAi?style=flat\&label=stars)](https://github.com/gexing521/StarAi/stargazers)
+[![CI](https://github.com/gexing521/StarAi/actions/workflows/ci.yml/badge.svg)](https://github.com/gexing521/StarAi/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/gexing521/StarAi)](LICENSE)
 [![Reddit](https://img.shields.io/badge/Reddit-r%2FAIUO-FF4500?logo=reddit\&logoColor=white)](https://www.reddit.com/r/AIUO/)
 
 <br />
 
-**[Download](https://github.com/vastsa/PI-Desktop/releases/latest)** ·
+**[Download](https://github.com/gexing521/StarAi/releases/latest)** ·
 [Documentation](https://pi-docs.aiuo.net/) ·
 [Build a Plugin](docs/plugin-development.md) ·
 [Screenshots](docs/guide/screenshots.md) ·
@@ -37,7 +37,7 @@ Local-first · Model-agnostic · Plugin-powered · macOS / Windows / Linux
 
 </div>
 
-> **Current release line: 0.24.x.**
+> **Current release line: 0.0.x.**
 
 ---
 
@@ -562,7 +562,7 @@ Agent / Plan / Goal
 
 <div align="center">
 
-### [Download PI-Desktop →](https://github.com/vastsa/PI-Desktop/releases/latest)
+### [Download StarAI →](https://github.com/gexing521/StarAi/releases/latest)
 
 **macOS · Windows · Linux**
 
@@ -653,8 +653,8 @@ Plugins can be created and loaded directly as Development Plugins.
 #### Start
 
 ```bash
-git clone https://github.com/vastsa/PI-Desktop.git
-cd PI-Desktop
+git clone https://github.com/gexing521/StarAi.git
+cd StarAi
 
 pnpm install
 
@@ -698,8 +698,8 @@ For standalone capabilities, consider one question first:
 
 Keep the Core focused. Let the ecosystem grow.
 
-**[Report an Issue](https://github.com/vastsa/PI-Desktop/issues/new/choose)** ·
-[Open Issues](https://github.com/vastsa/PI-Desktop/issues) ·
+**[Report an Issue](https://github.com/gexing521/StarAi/issues/new/choose)** ·
+[Open Issues](https://github.com/gexing521/StarAi/issues) ·
 [Build a Plugin](docs/plugin-development.md)
 
 ---
@@ -746,7 +746,7 @@ See [LICENSE](LICENSE) for details.
 
 <img src="docs/public/readme/logo.png" alt="PI-Desktop" width="72" />
 
-## PI-Desktop
+## StarAI
 
 ### Build your own Agent workspace.
 
@@ -754,7 +754,7 @@ See [LICENSE](LICENSE) for details.
 
 <br />
 
-**[Download](https://github.com/vastsa/PI-Desktop/releases/latest)** ·
+**[Download](https://github.com/gexing521/StarAi/releases/latest)** ·
 [Documentation](https://pi-docs.aiuo.net/) ·
 [Build a Plugin](docs/plugin-development.md)
 

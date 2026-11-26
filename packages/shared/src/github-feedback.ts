@@ -1,4 +1,4 @@
-export const GITHUB_REPO = "gexing521/StarAi-Desktop";
+export const GITHUB_REPO = "gexing521/StarAi";
 export const GITHUB_BUG_TEMPLATE = "bug_report.yml";
 export const GITHUB_ISSUE_ORIGIN = "https://github.com";
 export const GITHUB_REPO_URL = `${GITHUB_ISSUE_ORIGIN}/${GITHUB_REPO}`;

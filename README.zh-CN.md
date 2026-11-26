@@ -2,7 +2,7 @@
 
 <img src="docs/public/readme/logo.png" alt="PI-Desktop" width="108" />
 
-# PI-Desktop
+# StarAI
 
 ### 可拆卸的 AI Agent 桌面工作台
 
@@ -12,17 +12,17 @@
 
 <br />
 
-[![Release](https://img.shields.io/github/v/release/vastsa/PI-Desktop?label=release)](https://github.com/vastsa/PI-Desktop/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/vastsa/PI-Desktop/total?label=downloads)](https://github.com/vastsa/PI-Desktop/releases)
-[![Stars](https://img.shields.io/github/stars/vastsa/PI-Desktop?style=flat\&label=stars)](https://github.com/vastsa/PI-Desktop/stargazers)
-[![CI](https://github.com/vastsa/PI-Desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/vastsa/PI-Desktop/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/vastsa/PI-Desktop)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/gexing521/StarAi?label=release)](https://github.com/gexing521/StarAi/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/gexing521/StarAi/total?label=downloads)](https://github.com/gexing521/StarAi/releases)
+[![Stars](https://img.shields.io/github/stars/gexing521/StarAi?style=flat\&label=stars)](https://github.com/gexing521/StarAi/stargazers)
+[![CI](https://github.com/gexing521/StarAi/actions/workflows/ci.yml/badge.svg)](https://github.com/gexing521/StarAi/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/gexing521/StarAi)](LICENSE)
 [![Reddit](https://img.shields.io/badge/Reddit-r%2FAIUO-FF4500?logo=reddit\&logoColor=white)](https://www.reddit.com/r/AIUO/)
 [![QQ 群：点击加入 PI-Desktop 开发者交流群](https://img.shields.io/badge/QQ-%E5%8A%A0%E5%85%A5%E5%BC%80%E5%8F%91%E8%80%85%E4%BA%A4%E6%B5%81%E7%BE%A4-12B7F5?logo=tencentqq&logoColor=white)](https://qm.qq.com/q/iWP8i0XxIc)
 
 <br />
 
-**[立即下载](https://github.com/vastsa/PI-Desktop/releases/latest)** ·
+**[立即下载](https://github.com/gexing521/StarAi/releases/latest)** ·
 [使用文档](https://pi-docs.aiuo.net/) ·
 [插件开发](docs/plugin-development.md) ·
 [界面预览](docs/guide/screenshots.md) ·
@@ -102,7 +102,7 @@ Subagent 与 Worker Session 可以承担独立任务并行工作。
 
 </div>
 
-> **当前发布线：0.24.x。**
+> **当前发布线：0.0.x。**
 
 ---
 
@@ -563,7 +563,7 @@ Agent / Plan / Goal
 
 <div align="center">
 
-### [下载 PI-Desktop →](https://github.com/vastsa/PI-Desktop/releases/latest)
+### [下载 StarAI →](https://github.com/gexing521/StarAi/releases/latest)
 
 **macOS · Windows · Linux**
 
@@ -654,8 +654,8 @@ PI-Desktop 也可以作为开发者构建 Agent 产品的宿主平台。
 #### Start
 
 ```bash
-git clone https://github.com/vastsa/PI-Desktop.git
-cd PI-Desktop
+git clone https://github.com/gexing521/StarAi.git
+cd StarAi
 
 pnpm install
 
@@ -699,8 +699,8 @@ pnpm test
 
 让 Core 保持克制，让生态持续生长。
 
-**[提交 Issue](https://github.com/vastsa/PI-Desktop/issues/new/choose)** ·
-[查看 Issues](https://github.com/vastsa/PI-Desktop/issues) ·
+**[提交 Issue](https://github.com/gexing521/StarAi/issues/new/choose)** ·
+[查看 Issues](https://github.com/gexing521/StarAi/issues) ·
 [开发插件](docs/plugin-development.md)
 
 ---
@@ -747,7 +747,7 @@ PI-Desktop 使用 **GNU Lesser General Public License v3.0**。
 
 <img src="docs/public/readme/logo.png" alt="PI-Desktop" width="72" />
 
-## PI-Desktop
+## StarAI
 
 ### Build your own Agent workspace.
 
@@ -755,7 +755,7 @@ PI-Desktop 使用 **GNU Lesser General Public License v3.0**。
 
 <br />
 
-**[立即下载](https://github.com/vastsa/PI-Desktop/releases/latest)** ·
+**[立即下载](https://github.com/gexing521/StarAi/releases/latest)** ·
 [Documentation](https://pi-docs.aiuo.net/) ·
 [Build a Plugin](docs/plugin-development.md)
 
