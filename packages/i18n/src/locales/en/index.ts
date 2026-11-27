@@ -3264,6 +3264,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
       allowAndAuthorize: "Enable and request permission",
       authorizeNow: "Request permission",
       recheckNow: "I have granted it, continue",
+      relaunchNow: "Restart StarAI to apply",
       deny: "Not now",
       enableFailed: "Could not enable Computer use. Try again in Settings > Behavior.",
     },

@@ -23,6 +23,7 @@ const QUIT_TURN_SETTLE_BUDGET_MS = 2_000;
 export type ShutdownState = {
   shutdownComplete: boolean;
   shutdownPromise: Promise<void> | null;
+  relaunchOnExit?: boolean;
   quitting: boolean;
   quitConfirmed: boolean;
   closeBehavior: CloseBehavior;
@@ -52,6 +53,7 @@ export type ShutdownDependencies = {
   updater: Pick<AppUpdaterController, "dispose" | "isInstallingUpdate">;
   logger: Pick<Logger, "app">;
   confirmQuitDialog: () => Promise<boolean>;
+  isSystemPermissionRelaunch?: () => boolean;
   disposePowerSaveBlockers: () => void;
   liveCallService?: Pick<LiveCallService, "endForLifecycle">;
   disposeSystemProxyRelay?: () => Promise<void>;
@@ -78,6 +80,7 @@ export function registerShutdownHandlers({
   updater,
   logger,
   confirmQuitDialog,
+  isSystemPermissionRelaunch,
   disposePowerSaveBlockers,
   liveCallService,
   disposeSystemProxyRelay,
@@ -117,6 +120,11 @@ export function registerShutdownHandlers({
     // behind a dialog fails the update. There is no decision left either: the
     // user chose "restart to update" to get here.
     const isUpdateRestart = updater.isInstallingUpdate();
+    const isSystemPermissionRestart = Boolean(isSystemPermissionRelaunch?.());
+    if (isSystemPermissionRestart) {
+      state.relaunchOnExit = true;
+      state.quitConfirmed = true;
+    }
     if (!state.quitConfirmed && !isAutomatedMode && !isUpdateRestart) {
       state.quitConfirmed = true;
       quitConfirmationPending = true;
@@ -239,6 +247,12 @@ export function registerShutdownHandlers({
     })();
 
     const releaseQuit = () => {
+      if (state.relaunchOnExit && typeof app.relaunch === "function") {
+        app.relaunch();
+      }
+      if (typeof app.releaseSingleInstanceLock === "function") {
+        app.releaseSingleInstanceLock();
+      }
       state.shutdownComplete = true;
       app.quit();
     };

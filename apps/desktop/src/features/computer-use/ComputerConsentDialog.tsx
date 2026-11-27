@@ -187,13 +187,15 @@ function ConsentDialogSurface({
   const needsOsOnly = request.reason === "os-permission";
 
   const title = needsOsOnly ? t("computerUse.consent.osPermissionTitle") : t("computerUse.consent.title");
-  const primaryLabel = waiting
-    ? t("computerUse.consent.recheckNow")
-    : osReady
-      ? t("computerUse.consent.allowAndEnable")
-      : needsBoth
-        ? t("computerUse.consent.allowAndAuthorize")
-        : t("computerUse.consent.authorizeNow");
+  const primaryLabel = appGrantedBackendMissing
+    ? t("computerUse.consent.relaunchNow")
+    : waiting
+      ? t("computerUse.consent.recheckNow")
+      : osReady
+        ? t("computerUse.consent.allowAndEnable")
+        : needsBoth
+          ? t("computerUse.consent.allowAndAuthorize")
+          : t("computerUse.consent.authorizeNow");
 
   return portalOverlay(
     <OverlayBackdrop
@@ -266,7 +268,9 @@ function ConsentDialogSurface({
             disabled={busy}
             aria-busy={busy}
             onClick={() => {
-              if (waiting) {
+              if (appGrantedBackendMissing) {
+                void computerUseApi.relaunch();
+              } else if (waiting) {
                 void recheckCapabilities();
               } else {
                 void handleApprove();

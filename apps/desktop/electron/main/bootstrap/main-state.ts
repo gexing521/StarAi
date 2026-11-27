@@ -76,6 +76,7 @@ export class MainProcessState {
   quitting = false;
   shutdownComplete = false;
   shutdownPromise: Promise<void> | null = null;
+  relaunchOnExit = false;
   closeBehavior: CloseBehavior = "ask";
   closePromptOpen = false;
   quitConfirmed = false;
@@ -467,6 +468,12 @@ export class MainProcessState {
       },
       set toggleWindowAccelerator(value) {
         self.toggleWindowAccelerator = value;
+      },
+      get relaunchOnExit() {
+        return self.relaunchOnExit;
+      },
+      set relaunchOnExit(value) {
+        self.relaunchOnExit = value;
       },
     };
   }

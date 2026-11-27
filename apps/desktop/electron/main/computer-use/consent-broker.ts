@@ -20,6 +20,7 @@ export type ComputerConsentPromptInput = {
 export type ComputerConsentBroker = {
   request: (input: ComputerConsentPromptInput) => Promise<ComputerConsentDecision>;
   respond: (requestId: string, decision: ComputerConsentDecision) => boolean;
+  hasPending: () => boolean;
   dispose: () => void;
 };
 
@@ -90,6 +91,10 @@ export function createComputerConsentBroker(deps: {
 
     respond(requestId, decision) {
       return settle(requestId, decision);
+    },
+
+    hasPending() {
+      return pending.size > 0;
     },
 
     dispose() {

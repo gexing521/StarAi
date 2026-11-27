@@ -63,6 +63,8 @@ export type RegisterIpcDependencies = {
     requestId: string,
     decision: import("@pi-desktop/shared").ComputerConsentDecision,
   ) => boolean;
+  onComputerPermissionRequested?: () => void;
+  relaunchForComputerPermission?: () => void;
   traySessions: ReturnType<typeof createTraySessions>;
   taskbarUnreadBadge: ReturnType<typeof createTaskbarUnreadBadge>;
   getSidecar: () => AgentSidecar | null;
@@ -118,6 +120,8 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     getHost,
     publishComputerGrant,
     respondComputerConsent,
+    onComputerPermissionRequested,
+    relaunchForComputerPermission,
     getSidecar,
     getAgentHostBridge,
     getBackendRouter,
@@ -370,6 +374,8 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     getHost,
     publishGrant: publishComputerGrant,
     respondConsent: respondComputerConsent,
+    onPermissionRequested: onComputerPermissionRequested,
+    relaunchApp: relaunchForComputerPermission,
   });
   registerWorktreeIpc({
     registrar,

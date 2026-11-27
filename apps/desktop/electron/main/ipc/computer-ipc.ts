@@ -25,6 +25,10 @@ export type ComputerIpcDependencies = {
   publishGrant: (grant: ComputerGrantView | null) => void;
   /** Resolve an in-flight Computer Use consent prompt from the main window. */
   respondConsent?: (requestId: string, decision: ComputerConsentDecision) => boolean;
+  /** Record that the user initiated OS accessibility authorization. */
+  onPermissionRequested?: () => void;
+  /** Restart the application cleanly after an OS permission grant. */
+  relaunchApp?: () => void;
 };
 
 function hostUnavailable(): never {
@@ -36,6 +40,8 @@ export function registerComputerIpc({
   getHost,
   publishGrant,
   respondConsent,
+  onPermissionRequested,
+  relaunchApp,
 }: ComputerIpcDependencies): void {
   registrar.handleWithEvent(IPC.invoke.computerCapabilities, async (event) => {
     registrar.assertMainWindowSender(event);
@@ -60,6 +66,7 @@ export function registerComputerIpc({
       ? applicationAccessibility(capabilities, true)
       : await host.call<ComputerCapabilities>("computer.requestPermission", {});
     const view = { ...requested, capture: capturePermissionState() };
+    onPermissionRequested?.();
     await openAccessibilitySettings(view);
     return view;
   });
@@ -95,5 +102,11 @@ export function registerComputerIpc({
     }
     const ok = respondConsent ? respondConsent(requestId, decision) : false;
     return { ok };
+  });
+
+  registrar.handleWithEvent(IPC.invoke.computerRelaunch, async (event) => {
+    registrar.assertMainWindowSender(event);
+    relaunchApp?.();
+    return { ok: true };
   });
 }

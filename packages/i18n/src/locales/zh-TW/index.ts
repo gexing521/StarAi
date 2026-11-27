@@ -3210,6 +3210,7 @@ sklm: {
       allowAndAuthorize: "開啟並申請系統權限",
       authorizeNow: "前往授權",
       recheckNow: "我已授權，繼續",
+      relaunchNow: "重新啟動 StarAI 以生效",
       deny: "暫不允許",
       enableFailed: "無法開啟電腦操作，請稍後重試或前往 設定 → 行為 手動開啟。",
     },

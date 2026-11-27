@@ -3212,6 +3212,7 @@ sklm: {
       allowAndAuthorize: "开启并申请系统权限",
       authorizeNow: "前往授权",
       recheckNow: "我已授权，继续",
+      relaunchNow: "重启 StarAI 以生效",
       deny: "暂不允许",
       enableFailed: "无法开启电脑操作，请稍后重试或前往 设置 → 行为 手动开启。",
     },
