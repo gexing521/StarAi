@@ -3,6 +3,7 @@ import { sortStarAiModels, STARAI_PROVIDER_ID, type StarAiCatalog, type StarAiGr
 import { app, type BrowserWindow } from "electron";
 import type { HostProcess } from "./host-process";
 import { hasStarAiCookie, openStarAiLogin, starAiPartition } from "./star-ai-login";
+import { closeStarAiTopUp, openStarAiTopUp } from "./star-ai-topup";
 import { StarAiSession, starAiError } from "./star-ai-session";
 import { createStarAiTransport } from "./star-ai-transport";
 
@@ -50,7 +51,7 @@ export function createStarAiAccount(
     return current;
   };
   const saved = async () => normalizeSaved((await host().call<{ selection: Directory | Legacy | null }>("providers.starAiSelection", {})).selection);
-  const close = () => { for (const binding of active.values()) binding.transport.close(); active.clear(); };
+  const close = () => { closeStarAiTopUp(); for (const binding of active.values()) binding.transport.close(); active.clear(); };
   const disconnect = async () => { close(); await host().call("providers.starAiDisconnect", {}); };
   const suspend = async () => { close(); await host().call("providers.starAiSuspend", {}); };
   let tail: Promise<unknown> = Promise.resolve();
@@ -189,6 +190,14 @@ export function createStarAiAccount(
       return { ok: true };
     }),
     isSignedIn: async () => Boolean(await account.session().catch(() => null)),
+    balance: () => account.balance(),
+    topUp: async () => {
+      const session = await account.session();
+      if (!session) throw starAiError("STARAI_LOGIN_REQUIRED", "Sign in to StarAI.");
+      await openStarAiTopUp(getWindow(), partition);
+      const balance = await account.balance().catch(() => null);
+      return { ok: true, balance };
+    },
     studioMedia: {
       submit: (form: FormData, signal: AbortSignal) => account.submitStudioGeneration(form, signal),
       get: (id: string, signal: AbortSignal) => account.getStudioGeneration(id, signal),

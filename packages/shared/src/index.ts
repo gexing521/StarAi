@@ -66,6 +66,7 @@ export * from "./speech.js";
 export * from "./gen-ui.js";
 export * from "./image-generation.js";
 export * from "./video-generation.js";
+export * from "./star-ai-balance.js";
 export * from "./star-ai-model-family.js";
 export * from "./star-ai-model-order.js";
 export * from "./star-ai-services.js";

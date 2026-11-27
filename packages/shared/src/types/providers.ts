@@ -26,6 +26,28 @@ export type StarAiCatalog = {
   groups: StarAiGroup[];
   selection: StarAiSelection | null;
 };
+export type StarAiCurrencyDisplayType = "USD" | "CNY" | "TOKENS" | "CUSTOM";
+export type StarAiCurrencyConfig = {
+  quotaPerUnit: number;
+  displayInCurrency: boolean;
+  quotaDisplayType: StarAiCurrencyDisplayType;
+  usdExchangeRate: number;
+  customCurrencySymbol: string;
+  customCurrencyExchangeRate: number;
+};
+export type StarAiBalanceSnapshot = {
+  account: { id: number; name: string };
+  remainQuota: number;
+  usedQuota: number;
+  recent24hQuota: number;
+  requestCount: number;
+  currency: StarAiCurrencyConfig;
+  fetchedAt: number;
+};
+export type StarAiTopUpResult = {
+  ok: boolean;
+  balance: StarAiBalanceSnapshot | null;
+};
 
 export type ProviderPublic = {
   id: string;

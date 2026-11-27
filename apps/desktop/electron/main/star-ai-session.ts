@@ -1,4 +1,11 @@
-import { isStarAiChatModel, type StarAiGroup } from "@pi-desktop/shared";
+import {
+  DEFAULT_STARAI_CURRENCY_CONFIG,
+  isStarAiChatModel,
+  normalizeStarAiCurrencyConfig,
+  type StarAiBalanceSnapshot,
+  type StarAiCurrencyConfig,
+  type StarAiGroup,
+} from "@pi-desktop/shared";
 
 export const STARAI_ORIGIN = "https://starlinkaisite.com";
 export const STARAI_COOKIE = "new_api_refresh";
@@ -21,6 +28,7 @@ const required = () => starAiError("STARAI_LOGIN_REQUIRED", "Sign in to StarAI."
 export class StarAiSession {
   private current: AccountSession | null = null;
   private pending: Promise<AccountSession | null> | null = null;
+  private currencyCache: { config: StarAiCurrencyConfig; expiresAt: number } | null = null;
   private revision = 0;
   private readonly fetch: (url: string, init: RequestInit) => Promise<Response>;
   private readonly hasCookie: () => Promise<boolean>;
@@ -41,6 +49,7 @@ export class StarAiSession {
     this.revision++;
     this.current = null;
     this.pending = null;
+    this.currencyCache = null;
   }
 
   private request(path: string, init: RequestInit = {}, token?: string) {
@@ -165,6 +174,76 @@ export class StarAiSession {
       groups.push(...batch.filter((group) => group.models.length > 0));
     }
     return groups;
+  }
+
+  private async currencyConfig(): Promise<StarAiCurrencyConfig> {
+    const now = Date.now();
+    if (this.currencyCache && this.currencyCache.expiresAt > now) {
+      return this.currencyCache.config;
+    }
+    try {
+      const response = await this.request("/api/status", { credentials: "omit" });
+      if (!response.ok) return { ...DEFAULT_STARAI_CURRENCY_CONFIG };
+      const envelope = record(await response.json());
+      if (envelope.success !== true) return { ...DEFAULT_STARAI_CURRENCY_CONFIG };
+      const config = normalizeStarAiCurrencyConfig(record(envelope.data));
+      this.currencyCache = { config, expiresAt: now + 5 * 60_000 };
+      return config;
+    } catch {
+      return { ...DEFAULT_STARAI_CURRENCY_CONFIG };
+    }
+  }
+
+  async balance(nowSeconds?: number): Promise<StarAiBalanceSnapshot | null> {
+    const session = await this.session();
+    if (!session) return null;
+    const now = nowSeconds ?? Math.floor(Date.now() / 1000);
+    // Match StarAI dashboard rolling 24h query: include a 1h buffer for the current hour bucket.
+    const endTimestamp = now + 3600;
+    const startTimestamp = endTimestamp - 24 * 3600;
+    const usagePath =
+      `/api/data/self?start_timestamp=${startTimestamp}&end_timestamp=${endTimestamp}&default_time=hour`;
+    const [selfEnvelope, usageEnvelope, currency] = await Promise.all([
+      this.getEnvelope("/api/user/self", session),
+      this.getEnvelope(usagePath, session),
+      this.currencyConfig(),
+    ]);
+    const userData = record(selfEnvelope.data);
+    if (typeof userData.quota !== "number" || !Number.isFinite(userData.quota)) {
+      throw invalid();
+    }
+    const remainQuota = userData.quota;
+    const usedQuota =
+      typeof userData.used_quota === "number" && Number.isFinite(userData.used_quota)
+        ? userData.used_quota
+        : 0;
+    const requestCount =
+      typeof userData.request_count === "number" && Number.isFinite(userData.request_count)
+        ? Math.max(0, Math.round(userData.request_count))
+        : 0;
+    let recent24hQuota = 0;
+    if (usageEnvelope.data !== null && usageEnvelope.data !== undefined) {
+      if (!Array.isArray(usageEnvelope.data)) throw invalid();
+      for (const item of usageEnvelope.data) {
+        const quota = record(item).quota;
+        if (typeof quota === "number" && Number.isFinite(quota)) {
+          recent24hQuota += quota;
+        }
+      }
+    }
+    const name =
+      [userData.display_name, userData.username].find(
+        (value): value is string => typeof value === "string" && value.trim() !== "",
+      ) ?? session.account.name;
+    return {
+      account: { id: session.account.id, name },
+      remainQuota,
+      usedQuota,
+      recent24hQuota,
+      requestCount,
+      currency,
+      fetchedAt: Date.now(),
+    };
   }
 
   async submitChat(route: {accountId: number; group: string; model: string}, body: RecordValue, signal: AbortSignal) {

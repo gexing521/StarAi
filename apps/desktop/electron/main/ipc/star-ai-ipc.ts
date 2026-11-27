@@ -17,4 +17,6 @@ export function registerStarAiIpc(registrar: IpcRegistrar, account: StarAiAccoun
   handle(IPC.invoke.starAiCatalog, account.catalog);
   handle(IPC.invoke.starAiActivate, account.activate);
   handle(IPC.invoke.starAiLogout, account.logout);
+  handle(IPC.invoke.starAiBalance, account.balance);
+  handle(IPC.invoke.starAiTopUp, account.topUp);
 }

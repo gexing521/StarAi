@@ -311,6 +311,8 @@ export const IPC = {
     starAiCatalog: "pi-desktop/starai/catalog",
     starAiActivate: "pi-desktop/starai/activate",
     starAiLogout: "pi-desktop/starai/logout",
+    starAiBalance: "pi-desktop/starai/balance",
+    starAiTopUp: "pi-desktop/starai/topUp",
     providersList: "pi-desktop/providers/list",
     providersReorder: "pi-desktop/providers/reorder",
     providersCreate: "pi-desktop/providers/create",
