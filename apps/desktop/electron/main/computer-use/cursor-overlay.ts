@@ -29,6 +29,41 @@ export type ComputerCursorOverlay = {
 /** Margin around the target so a cursor drawn at the edge is not clipped. */
 const OVERLAY_MARGIN = 48;
 
+/**
+ * Convert physical screen coordinates from the Windows UIA backend into
+ * Electron DIP coordinates so the overlay window and pointer line up cleanly
+ * under per-monitor DPI scaling (125%, 150%, 200%, mixed monitors).
+ */
+export function mapCursorEventToDisplay(
+  event: ComputerCursorEvent,
+  platform: NodeJS.Platform = process.platform,
+  converter: {
+    screenToDipRect?: (window: BrowserWindow | null, rect: Electron.Rectangle) => Electron.Rectangle;
+    screenToDipPoint?: (point: Electron.Point) => Electron.Point;
+  } = screen,
+): ComputerCursorEvent {
+  if (platform !== "win32" || event.kind === "hide") return event;
+  if (event.kind === "show") {
+    if (typeof converter.screenToDipRect !== "function") return event;
+    const dip = converter.screenToDipRect(null, {
+      x: Math.round(event.bounds.x),
+      y: Math.round(event.bounds.y),
+      width: Math.max(1, Math.round(event.bounds.width)),
+      height: Math.max(1, Math.round(event.bounds.height)),
+    });
+    return {
+      ...event,
+      bounds: { x: dip.x, y: dip.y, width: dip.width, height: dip.height },
+    };
+  }
+  if (typeof converter.screenToDipPoint !== "function") return event;
+  const dip = converter.screenToDipPoint({
+    x: Math.round(event.x),
+    y: Math.round(event.y),
+  });
+  return { ...event, x: dip.x, y: dip.y };
+}
+
 export function createComputerCursorOverlay(input: {
   log?: (message: string, data?: Record<string, unknown>) => void;
 }): ComputerCursorOverlay {
@@ -88,7 +123,7 @@ export function createComputerCursorOverlay(input: {
       try {
         const created = new BrowserWindow({
           ...overlayBounds(bounds),
-          title: "PI-Desktop Computer Use",
+          title: "StarAI Computer Use",
           show: false,
           frame: false,
           transparent: true,
@@ -168,22 +203,23 @@ export function createComputerCursorOverlay(input: {
   return {
     apply(event) {
       try {
-        if (event.kind === "hide") {
-          if (currentGrant && event.grantId !== currentGrant) return;
+        const mapped = mapCursorEventToDisplay(event);
+        if (mapped.kind === "hide") {
+          if (currentGrant && mapped.grantId !== currentGrant) return;
           destroy();
           return;
         }
-        if (event.kind === "show") {
-          currentGrant = event.grantId;
-          void ensureWindow(event.bounds).then((created) => {
-            if (created) send(event);
+        if (mapped.kind === "show") {
+          currentGrant = mapped.grantId;
+          void ensureWindow(mapped.bounds).then((created) => {
+            if (created) send(mapped);
           });
           return;
         }
         // A draw command for a grant that already ended is dropped: the
         // overlay must never outlive the authority it was drawn for.
-        if (currentGrant && event.grantId !== currentGrant) return;
-        send(event);
+        if (currentGrant && mapped.grantId !== currentGrant) return;
+        send(mapped);
       } catch (error) {
         input.log?.("computer cursor overlay command failed", { data: String(error) });
       }

@@ -62,7 +62,7 @@ export const COMPUTER_LOOP_SYSTEM_PROMPT = [
   "Rules:",
   "- Address elements by `uid` from the element list. Use a point only when no element fits.",
   "- One action per answer. Do not batch, and do not invent a uid.",
-  "- `set_value` needs `text`; `press_keys` needs `keys`; `select` needs `option`; `scroll` needs `scroll`.",
+  "- `set_value` needs `text`; `press_keys` needs `keys` (use `cmd+...` on macOS and `ctrl+...` on Windows/Linux); `select` needs `option`; `scroll` needs `scroll`.",
   "- `switch` reads another window and costs a step but no budget. Every uid from the previous window stops working, so inspect what you switched to before acting on it.",
   "- A window marked refused can never be operated, and PI-Desktop's own windows are never a target. Do not retry one; it will not start working.",
   "- You cannot widen the scope, raise a budget, or disable a check. Asking for that fails the step.",

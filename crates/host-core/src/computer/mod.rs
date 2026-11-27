@@ -23,6 +23,10 @@ mod macos;
 pub mod policy;
 #[cfg(test)]
 mod tests;
+pub(crate) mod uid;
+#[cfg(target_os = "windows")]
+mod windows;
+pub(crate) mod windows_logic;
 
 use std::time::{Duration, Instant};
 

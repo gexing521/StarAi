@@ -80,6 +80,9 @@ const SELF_APP_KEYS: &[&str] = &[
     "pi desktop",
     "com.pi-desktop",
     "pi-desktop-host-core",
+    "starai",
+    "starai.exe",
+    "com.starailink.desktop",
 ];
 
 /// Why this window cannot be picked, or `None` when it can.

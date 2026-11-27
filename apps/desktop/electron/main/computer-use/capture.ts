@@ -67,10 +67,15 @@ export async function captureGrantedWindow(input: {
  * What the doctor view can say about capture before anything is attempted.
  * host-core cannot answer this: the capture path is Chromium's, not its.
  */
-export function capturePermissionState(): ComputerPermissionState {
-  if (process.platform !== "darwin") {
-    // Windows needs no grant; Linux depends on the portal, which only answers
-    // when a capture is actually requested.
+export function capturePermissionState(
+  platform: NodeJS.Platform = process.platform,
+): ComputerPermissionState {
+  if (platform === "win32") {
+    // Windows window capture via Chromium desktopCapturer needs no OS grant.
+    return "granted";
+  }
+  if (platform !== "darwin") {
+    // Linux depends on the portal, which only answers when a capture is actually requested.
     return "not-requested";
   }
   try {

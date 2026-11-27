@@ -470,37 +470,4 @@ pub(super) fn supported_actions(names: &[String]) -> Vec<ActionKind> {
     actions
 }
 
-/// `uid` encodes the path from the window root plus a digest of the role and
-/// label it had when inspected. A later action re-walks the path and checks the
-/// digest, so a tree that changed underneath refuses instead of acting on
-/// whatever now sits at that position. No native reference is kept between
-/// calls, which is also why a uid cannot outlive what it describes.
-pub(super) fn make_uid(path: &[usize], role: &str, label: Option<&str>) -> String {
-    let joined = path
-        .iter()
-        .map(|index| index.to_string())
-        .collect::<Vec<_>>()
-        .join(".");
-    format!("{joined}#{:x}", identity_digest(role, label))
-}
-
-pub(super) fn identity_digest(role: &str, label: Option<&str>) -> u32 {
-    // FNV-1a over role and label. This is a change detector, not a secret.
-    let mut hash: u32 = 0x811c_9dc5;
-    for byte in role.as_bytes().iter().chain(label.unwrap_or("").as_bytes()) {
-        hash ^= u32::from(*byte);
-        hash = hash.wrapping_mul(0x0100_0193);
-    }
-    hash
-}
-
-pub(super) fn parse_uid(uid: &str) -> Option<(Vec<usize>, u32)> {
-    let (path, digest) = uid.split_once('#')?;
-    let indices = path
-        .split('.')
-        .filter(|part| !part.is_empty())
-        .map(|part| part.parse::<usize>().ok())
-        .collect::<Option<Vec<_>>>()?;
-    let digest = u32::from_str_radix(digest, 16).ok()?;
-    Some((indices, digest))
-}
+pub(super) use super::super::uid::{identity_digest, make_uid, parse_uid};

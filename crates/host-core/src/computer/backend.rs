@@ -136,6 +136,7 @@ pub trait Desktop: Send + Sync {
     /// of the answer, and it is discovered here rather than supplied by a
     /// request, so no caller can shrink this set.
     fn self_pids(&self) -> Vec<i32> {
+        #[allow(unused_mut)]
         let mut pids = vec![std::process::id() as i32];
         #[cfg(unix)]
         {
@@ -217,10 +218,7 @@ pub fn active() -> Box<dyn Desktop> {
     }
     #[cfg(target_os = "windows")]
     {
-        Box::new(UnsupportedDesktop::new(
-            "win32",
-            "the Windows UI Automation backend lands in stage 2",
-        ))
+        Box::new(super::windows::WindowsDesktop::new())
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
