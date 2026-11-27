@@ -177,7 +177,6 @@
   color: var(--ds-text-muted);
 }
 .composer-model-thinking-model,
-.composer-model-group-chip,
 .composer-model-thinking-level {
   min-width: 0;
   overflow: hidden;
@@ -189,12 +188,6 @@
   max-width: 170px;
   color: var(--ds-text-primary);
   font-weight: var(--font-weight-medium);
-}
-
-.composer-model-group-chip {
-  max-width: 112px;
-  color: var(--ds-text-muted);
-  font-size: var(--text-xs);
 }
 
 /*

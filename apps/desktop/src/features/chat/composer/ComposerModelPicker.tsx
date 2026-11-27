@@ -90,7 +90,7 @@ export function ComposerModelPicker({
           type="button"
           className={`icon-btn composer-model-thinking-chip ${open ? "active" : ""}`}
           tooltip={`${selectionLabel} · ${t("chat.reasoningLevel")}: ${thinkingLabel}${fastSuffix}`}
-          ariaLabel={`${t("chat.model")}: ${selectionLabel}. ${t("chat.reasoningLevel")}: ${thinkingLabel}${fastSuffix}`}
+          ariaLabel={`${t("chat.model")}: ${modelLabel}. ${t("chat.reasoningLevel")}: ${thinkingLabel}${fastSuffix}`}
           aria-haspopup="menu"
           aria-expanded={open}
           disabled={controlsBlocked}
@@ -107,7 +107,6 @@ export function ComposerModelPicker({
             <IconBot size={14} />
           </span>
           <span className="composer-model-thinking-model">{modelLabel}</span>
-          {modelGroupLabel && <span className="composer-model-group-chip">{modelGroupLabel}</span>}
           {thinkingLevel !== "off" ? (
             <span className="composer-model-thinking-level">{thinkingLabel}</span>
           ) : null}
