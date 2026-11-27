@@ -208,7 +208,6 @@ export function ComposerToolbar({
             setModeOpen(false);
             setPermissionOpen(false);
           }}
-          runActive={runActive}
           showToast={showToast}
         />
         {localToolsAllowed ? <ComposerControlSlots side="left" /> : null}

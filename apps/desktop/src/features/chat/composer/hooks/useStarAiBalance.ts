@@ -11,9 +11,7 @@ type BalanceStoreState = {
   lastFetchedAt: number;
 };
 
-const REFRESH_STALE_MS = 30_000;
-const FOCUS_REFRESH_STALE_MS = 10_000;
-const OPEN_REFRESH_STALE_MS = 5_000;
+export const STARAI_BALANCE_POLL_INTERVAL_MS = 60_000;
 
 let state: BalanceStoreState = {
   snapshot: null,
@@ -24,6 +22,8 @@ let state: BalanceStoreState = {
 };
 
 let inflight: Promise<StarAiBalanceSnapshot | null> | null = null;
+let activePollSubscribers = 0;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -50,9 +50,16 @@ function hasBridge(): boolean {
   return typeof window !== "undefined" && typeof window.piDesktop?.invoke === "function";
 }
 
-async function fetchStarAiBalance(options?: { force?: boolean; staleMs?: number }): Promise<StarAiBalanceSnapshot | null> {
+function isDocumentVisible(): boolean {
+  return typeof document === "undefined" || document.visibilityState !== "hidden";
+}
+
+async function fetchStarAiBalance(options?: {
+  force?: boolean;
+  staleMs?: number;
+}): Promise<StarAiBalanceSnapshot | null> {
   if (!hasBridge()) return state.snapshot;
-  const staleMs = options?.staleMs ?? REFRESH_STALE_MS;
+  const staleMs = options?.staleMs ?? STARAI_BALANCE_POLL_INTERVAL_MS;
   if (!options?.force && state.lastFetchedAt > 0 && Date.now() - state.lastFetchedAt < staleMs) {
     return state.snapshot;
   }
@@ -91,6 +98,23 @@ async function fetchStarAiBalance(options?: { force?: boolean; staleMs?: number 
   return inflight;
 }
 
+function startPolling() {
+  activePollSubscribers += 1;
+  if (pollTimer !== null || typeof window === "undefined") return;
+  pollTimer = setInterval(() => {
+    if (!isDocumentVisible()) return;
+    void fetchStarAiBalance({ staleMs: STARAI_BALANCE_POLL_INTERVAL_MS });
+  }, STARAI_BALANCE_POLL_INTERVAL_MS);
+}
+
+function stopPolling() {
+  activePollSubscribers = Math.max(0, activePollSubscribers - 1);
+  if (activePollSubscribers === 0 && pollTimer !== null) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
 async function triggerStarAiTopUp(): Promise<void> {
   if (!hasBridge() || state.openingTopUp) return;
   setState({ openingTopUp: true });
@@ -112,6 +136,11 @@ async function triggerStarAiTopUp(): Promise<void> {
 
 export function resetStarAiBalanceStoreForTests() {
   inflight = null;
+  activePollSubscribers = 0;
+  if (pollTimer !== null) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
   state = {
     snapshot: null,
     loading: false,
@@ -122,11 +151,10 @@ export function resetStarAiBalanceStoreForTests() {
   emit();
 }
 
-export function useStarAiBalance({ open, runActive }: { open: boolean; runActive: boolean }) {
+export function useStarAiBalance() {
   const providers = useAppStore((s) => s.providers);
   const hasStarAiProvider = providers.some((provider) => isStarAiProviderId(provider.id));
   const store = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const prevRunActiveRef = useRef(runActive);
   const prevHasStarAiRef = useRef(hasStarAiProvider);
 
   useEffect(() => {
@@ -140,28 +168,18 @@ export function useStarAiBalance({ open, runActive }: { open: boolean; runActive
     const becameSignedIn = !prevHasStarAiRef.current;
     prevHasStarAiRef.current = true;
     void fetchStarAiBalance({ force: becameSignedIn });
-  }, [hasStarAiProvider]);
-
-  useEffect(() => {
-    const wasRunning = prevRunActiveRef.current;
-    prevRunActiveRef.current = runActive;
-    if (wasRunning && !runActive && hasStarAiProvider) {
-      void fetchStarAiBalance({ force: true });
-    }
-  }, [hasStarAiProvider, runActive]);
-
-  useEffect(() => {
-    if (!open || !hasStarAiProvider) return;
-    void fetchStarAiBalance({ staleMs: OPEN_REFRESH_STALE_MS });
-  }, [open, hasStarAiProvider]);
-
-  useEffect(() => {
-    if (!hasStarAiProvider || typeof window === "undefined") return;
-    const onFocus = () => {
-      void fetchStarAiBalance({ staleMs: FOCUS_REFRESH_STALE_MS });
+    startPolling();
+    const onVisibleOrFocus = () => {
+      if (!isDocumentVisible()) return;
+      void fetchStarAiBalance({ staleMs: STARAI_BALANCE_POLL_INTERVAL_MS });
     };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener("focus", onVisibleOrFocus);
+    document.addEventListener("visibilitychange", onVisibleOrFocus);
+    return () => {
+      stopPolling();
+      window.removeEventListener("focus", onVisibleOrFocus);
+      document.removeEventListener("visibilitychange", onVisibleOrFocus);
+    };
   }, [hasStarAiProvider]);
 
   const refresh = useCallback(() => {

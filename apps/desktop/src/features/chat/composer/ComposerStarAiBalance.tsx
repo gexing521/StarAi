@@ -14,13 +14,11 @@ export function ComposerStarAiBalance({
   open,
   setOpen,
   onCloseOtherMenus,
-  runActive,
   showToast,
 }: {
   open: boolean;
   setOpen: Dispatch<SetStateAction<boolean>>;
   onCloseOtherMenus: () => void;
-  runActive: boolean;
   showToast: AppState["showToast"];
 }) {
   const { t, i18n } = useTranslation("starAi");
@@ -32,7 +30,7 @@ export function ComposerStarAiBalance({
     error,
     refresh,
     openTopUp,
-  } = useStarAiBalance({ open, runActive });
+  } = useStarAiBalance();
 
   if (!hasStarAiProvider && !snapshot) {
     return null;

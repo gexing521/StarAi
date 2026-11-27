@@ -165,13 +165,16 @@ test("StarAiSession.balance falls back to default CNY currency when /api/status 
   assert.equal(formatStarAiQuota(snapshot.remainQuota, snapshot.currency, "zh-CN"), "￥2.00");
 });
 
-test("top-up URL guard and composer balance wiring satisfy security and UI contracts", async () => {
-  const [topUpSource, toolbarSource] = await Promise.all([
+test("top-up URL guard, 1-minute polling cadence, and composer balance wiring satisfy contracts", async () => {
+  const [topUpSource, toolbarSource, balanceHookSource] = await Promise.all([
     readFile(new URL("../electron/main/star-ai-topup.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/features/chat/composer/ComposerToolbar.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/chat/composer/hooks/useStarAiBalance.ts", import.meta.url), "utf8"),
   ]);
   assert.match(topUpSource, /STARAI_WALLET_PATH = "\/wallet"/);
   assert.match(topUpSource, /url\.protocol === "https:" && !url\.username && !url\.password/);
+  assert.match(balanceHookSource, /STARAI_BALANCE_POLL_INTERVAL_MS = 60_000/);
+  assert.doesNotMatch(balanceHookSource, /runActive/);
 
   const permissionIdx = toolbarSource.indexOf("<ComposerPermissionPicker");
   const balanceIdx = toolbarSource.indexOf("<ComposerStarAiBalance");
