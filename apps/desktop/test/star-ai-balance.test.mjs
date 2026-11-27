@@ -165,21 +165,23 @@ test("StarAiSession.balance falls back to default CNY currency when /api/status 
   assert.equal(formatStarAiQuota(snapshot.remainQuota, snapshot.currency, "zh-CN"), "￥2.00");
 });
 
-test("top-up URL guard, 1-minute polling cadence, and composer balance wiring satisfy contracts", async () => {
-  const [topUpSource, toolbarSource, balanceHookSource] = await Promise.all([
+test("top-up URL guard, 1-minute polling cadence, and sidebar footer balance wiring satisfy contracts", async () => {
+  const [topUpSource, sidebarNavSource, toolbarSource, balanceHookSource] = await Promise.all([
     readFile(new URL("../electron/main/star-ai-topup.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/SidebarNavigation.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/features/chat/composer/ComposerToolbar.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/features/chat/composer/hooks/useStarAiBalance.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/use-star-ai-balance.ts", import.meta.url), "utf8"),
   ]);
   assert.match(topUpSource, /STARAI_WALLET_PATH = "\/wallet"/);
   assert.match(topUpSource, /url\.protocol === "https:" && !url\.username && !url\.password/);
   assert.match(balanceHookSource, /STARAI_BALANCE_POLL_INTERVAL_MS = 60_000/);
   assert.doesNotMatch(balanceHookSource, /runActive/);
+  assert.doesNotMatch(toolbarSource, /StarAiBalance/);
 
-  const permissionIdx = toolbarSource.indexOf("<ComposerPermissionPicker");
-  const balanceIdx = toolbarSource.indexOf("<ComposerStarAiBalance");
-  const leftSlotsIdx = toolbarSource.indexOf('<ComposerControlSlots side="left"');
-  assert.ok(permissionIdx > 0 && balanceIdx > permissionIdx && leftSlotsIdx > balanceIdx);
+  const settingsIdx = sidebarNavSource.indexOf('data-nav="settings"');
+  const balanceIdx = sidebarNavSource.indexOf("<StarAiBalanceControl");
+  const buildIdx = sidebarNavSource.indexOf('data-nav="build"');
+  assert.ok(settingsIdx > 0 && balanceIdx > settingsIdx && buildIdx > balanceIdx);
 
   for (const key of [
     "balancePrefix",

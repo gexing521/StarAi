@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { TFunction } from "i18next";
 import {
   keybindingDisplayParts,
@@ -25,7 +25,6 @@ import {
 import { LiveVoiceControls } from "../../voice/live/LiveVoiceControls";
 import { ComputerUseIndicator } from "../../computer-use/ComputerUseIndicator";
 import { ComposerModelPicker } from "./ComposerModelPicker";
-import { ComposerStarAiBalance } from "./ComposerStarAiBalance";
 import type { useComposerModelMenu } from "./hooks/useComposerModelMenu";
 
 type ModelMenuController = ReturnType<typeof useComposerModelMenu>;
@@ -43,8 +42,6 @@ export type ComposerToolbarProps = {
   setModeOpen: Dispatch<SetStateAction<boolean>>;
   permissionOpen: boolean;
   setPermissionOpen: Dispatch<SetStateAction<boolean>>;
-  balanceOpen?: boolean;
-  setBalanceOpen?: Dispatch<SetStateAction<boolean>>;
   controlsBlocked: boolean;
   localToolsAllowed?: boolean;
   attachmentsAllowed?: boolean;
@@ -89,8 +86,6 @@ export function ComposerToolbar({
   setModeOpen,
   permissionOpen,
   setPermissionOpen,
-  balanceOpen: balanceOpenProp,
-  setBalanceOpen: setBalanceOpenProp,
   controlsBlocked,
   localToolsAllowed = true,
   attachmentsAllowed = true,
@@ -122,9 +117,6 @@ export function ComposerToolbar({
 }: ComposerToolbarProps) {
   const platform = (window.piDesktop?.platform ?? "darwin") as ShortcutPlatform;
   const steeringShortcut = keybindingDisplayParts("Alt+Enter", platform).join("+");
-  const [fallbackBalanceOpen, setFallbackBalanceOpen] = useState(false);
-  const balanceOpen = balanceOpenProp ?? fallbackBalanceOpen;
-  const setBalanceOpen = setBalanceOpenProp ?? setFallbackBalanceOpen;
   return (
     <div className="composer-toolbar">
       <div className="composer-left">
@@ -137,7 +129,6 @@ export function ComposerToolbar({
             disabled={controlsBlocked || pasting || !attachmentsAllowed}
             onClick={() => {
               setPermissionOpen(false);
-              setBalanceOpen(false);
               void pickAndAttach();
             }}
           >
@@ -158,7 +149,6 @@ export function ComposerToolbar({
           onCloseOtherMenus={() => {
             modelMenu.setOpen(false);
             setPermissionOpen(false);
-            setBalanceOpen(false);
           }}
           onSelect={async (next) => {
             try {
@@ -183,7 +173,6 @@ export function ComposerToolbar({
           onCloseOtherMenus={() => {
             modelMenu.setOpen(false);
             setModeOpen(false);
-            setBalanceOpen(false);
           }}
           onSelect={async (candidate) => {
                 try {
@@ -200,16 +189,6 @@ export function ComposerToolbar({
                   });
                 }
           }} />
-        <ComposerStarAiBalance
-          open={balanceOpen}
-          setOpen={setBalanceOpen}
-          onCloseOtherMenus={() => {
-            modelMenu.setOpen(false);
-            setModeOpen(false);
-            setPermissionOpen(false);
-          }}
-          showToast={showToast}
-        />
         {localToolsAllowed ? <ComposerControlSlots side="left" /> : null}
       </div>
 
@@ -227,10 +206,7 @@ export function ComposerToolbar({
           selectedProviderId={providerId}
           selectedModelId={modelId}
           controlsBlocked={controlsBlocked}
-          onCloseOtherMenus={() => {
-            setPermissionOpen(false);
-            setBalanceOpen(false);
-          }}
+          onCloseOtherMenus={() => setPermissionOpen(false)}
           onOpenModelSettings={() => useAppStore.getState().setSettingsTab("agent")}
         />
         {composerTransforms.map((transform) => {

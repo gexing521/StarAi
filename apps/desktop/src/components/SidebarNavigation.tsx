@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { sidebarModuleVisible } from "@pi-desktop/shared";
 import { useTranslation } from "react-i18next";
 import { useUpdateState } from "../hooks/use-update-state";
@@ -5,6 +6,7 @@ import { api } from "../lib/api";
 import { usePluginBrowseState } from "../features/plugins/browse-state";
 import { useAppStore } from "../stores/app-store";
 import { IconClock, IconNewSession, IconPlug, IconSettings } from "./icons";
+import { StarAiBalanceControl } from "./StarAiBalanceControl";
 import { cx, TooltipButton } from "./ui";
 
 /**
@@ -108,6 +110,10 @@ export function SidebarFooter() {
   const showBuildVersion = useAppStore((s) =>
     sidebarModuleVisible(s.settings?.sidebarModules, "buildVersion"),
   );
+  const [balanceOpen, setBalanceOpen] = useState(false);
+  useEffect(() => {
+    if (settingsOpen) setBalanceOpen(false);
+  }, [settingsOpen]);
   const update = useUpdateState();
 
   // An update only earns the accent dot once it is actionable — a pending
@@ -139,6 +145,12 @@ export function SidebarFooter() {
         <IconSettings size={15} aria-hidden />
         <span>{t("nav.settings")}</span>
       </button>
+
+      <StarAiBalanceControl
+        open={balanceOpen}
+        setOpen={setBalanceOpen}
+        showToast={showToast}
+      />
 
       {showBuildVersion && (
         <TooltipButton

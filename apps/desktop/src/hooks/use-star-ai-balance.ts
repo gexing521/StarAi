@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { isStarAiProviderId, type StarAiBalanceSnapshot } from "@pi-desktop/shared";
-import { api } from "../../../../lib/api";
-import { useAppStore } from "../../../../stores/app-store";
+import { api } from "../lib/api";
+import { useAppStore } from "../stores/app-store";
 
 type BalanceStoreState = {
   snapshot: StarAiBalanceSnapshot | null;

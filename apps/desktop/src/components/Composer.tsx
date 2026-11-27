@@ -158,7 +158,6 @@ export function Composer({
 
   const [modeOpen, setModeOpen] = useState(false);
   const [permissionOpen, setPermissionOpen] = useState(false);
-  const [balanceOpen, setBalanceOpen] = useState(false);
   const composerTransformInvalidateRef = useRef<() => void>(() => {});
   const composerShellRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
@@ -650,8 +649,6 @@ export function Composer({
             setModeOpen={setModeOpen}
             permissionOpen={permissionOpen}
             setPermissionOpen={setPermissionOpen}
-            balanceOpen={balanceOpen}
-            setBalanceOpen={setBalanceOpen}
             controlsBlocked={controlsBlocked}
             localToolsAllowed={localToolsAllowed}
             attachmentsAllowed={attachmentsAllowed}

@@ -4,21 +4,19 @@ import {
   formatStarAiQuota,
   formatStarAiRequestCount,
 } from "@pi-desktop/shared";
-import { AnchoredMenu } from "../../../components/settings/AnchoredMenu";
-import { TooltipButton } from "../../../components/ui";
-import { IconArrowUpRight, IconRefresh } from "../../../components/icons";
-import type { AppState } from "../../../stores/app-store";
-import { useStarAiBalance } from "./hooks/useStarAiBalance";
+import { AnchoredMenu } from "./settings/AnchoredMenu";
+import { TooltipButton } from "./ui";
+import { IconArrowUpRight, IconRefresh } from "./icons";
+import type { AppState } from "../stores/app-store";
+import { useStarAiBalance } from "../hooks/use-star-ai-balance";
 
-export function ComposerStarAiBalance({
+export function StarAiBalanceControl({
   open,
   setOpen,
-  onCloseOtherMenus,
   showToast,
 }: {
   open: boolean;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  onCloseOtherMenus: () => void;
   showToast: AppState["showToast"];
 }) {
   const { t, i18n } = useTranslation("starAi");
@@ -68,10 +66,10 @@ export function ComposerStarAiBalance({
 
   return (
     <AnchoredMenu
-      className="composer-star-ai-balance"
+      className="footer-star-ai-balance"
       open={open}
       onClose={() => setOpen(false)}
-      menuClassName="composer-star-ai-balance-popover"
+      menuClassName="star-ai-balance-popover"
       label={t("balanceTitle")}
       role="dialog"
       align="start"
@@ -81,39 +79,36 @@ export function ComposerStarAiBalance({
         <TooltipButton
           ref={ref}
           type="button"
-          className={`icon-btn mode-chip composer-star-ai-balance-chip${open ? " active" : ""}${depleted ? " is-depleted" : ""}`}
+          className={`footer-star-ai-balance-btn${open ? " active" : ""}${depleted ? " is-depleted" : ""}`}
           tooltip={t("balanceTriggerTooltip")}
           ariaLabel={`${t("balancePrefix")} ${remainingDisplay}`}
           aria-haspopup="dialog"
           aria-expanded={open}
-          onClick={() => {
-            onCloseOtherMenus();
-            setOpen((prev) => !prev);
-          }}
+          onClick={() => setOpen((prev) => !prev)}
         >
-          <span className="composer-star-ai-balance-brand">
+          <span className="footer-star-ai-balance-brand">
             {t("balancePrefix")}
           </span>
-          <span className="composer-star-ai-balance-amount">
+          <span className="footer-star-ai-balance-amount">
             {remainingDisplay}
           </span>
         </TooltipButton>
       )}
     >
-      <div className="composer-star-ai-balance-header">
-        <div className="composer-star-ai-balance-heading">
-          <span className="composer-star-ai-balance-title">
+      <div className="star-ai-balance-header">
+        <div className="star-ai-balance-heading">
+          <span className="star-ai-balance-title">
             {t("balanceTitle")}
           </span>
           {snapshot?.account.name ? (
-            <span className="composer-star-ai-balance-account">
+            <span className="star-ai-balance-account">
               {snapshot.account.name}
             </span>
           ) : null}
         </div>
         <TooltipButton
           type="button"
-          className={`icon-btn icon-btn-square composer-star-ai-balance-refresh${loading ? " is-spinning" : ""}`}
+          className={`icon-btn icon-btn-square star-ai-balance-refresh${loading ? " is-spinning" : ""}`}
           tooltip={t("balanceRefresh")}
           ariaLabel={t("balanceRefresh")}
           disabled={loading}
@@ -123,54 +118,54 @@ export function ComposerStarAiBalance({
         </TooltipButton>
       </div>
 
-      <div className="composer-star-ai-balance-hero">
-        <span className="composer-star-ai-balance-label">
+      <div className="star-ai-balance-hero">
+        <span className="star-ai-balance-label">
           {t("balanceRemaining")}
         </span>
         <strong
-          className={`composer-star-ai-balance-hero-value${depleted ? " is-depleted" : ""}`}
+          className={`star-ai-balance-hero-value${depleted ? " is-depleted" : ""}`}
         >
           {snapshot ? remainingDisplay : loading ? t("balanceLoading") : "—"}
         </strong>
       </div>
 
-      <div className="composer-star-ai-balance-grid">
-        <div className="composer-star-ai-balance-stat composer-star-ai-balance-stat-wide">
-          <span className="composer-star-ai-balance-label">
+      <div className="star-ai-balance-grid">
+        <div className="star-ai-balance-stat star-ai-balance-stat-wide">
+          <span className="star-ai-balance-label">
             {t("balanceRecent24h")}
           </span>
-          <strong className="composer-star-ai-balance-stat-value">
+          <strong className="star-ai-balance-stat-value">
             {recent24hDisplay}
           </strong>
         </div>
-        <div className="composer-star-ai-balance-stat">
-          <span className="composer-star-ai-balance-label">
+        <div className="star-ai-balance-stat">
+          <span className="star-ai-balance-label">
             {t("balanceHistoryUsage")}
           </span>
-          <strong className="composer-star-ai-balance-stat-value">
+          <strong className="star-ai-balance-stat-value">
             {historyDisplay}
           </strong>
         </div>
-        <div className="composer-star-ai-balance-stat">
-          <span className="composer-star-ai-balance-label">
+        <div className="star-ai-balance-stat">
+          <span className="star-ai-balance-label">
             {t("balanceRequestCount")}
           </span>
-          <strong className="composer-star-ai-balance-stat-value">
+          <strong className="star-ai-balance-stat-value">
             {requestCountDisplay}
           </strong>
         </div>
       </div>
 
       {error ? (
-        <div className="composer-star-ai-balance-error" role="status">
+        <div className="star-ai-balance-error" role="status">
           {t("balanceLoadError")}
         </div>
       ) : null}
 
-      <div className="composer-star-ai-balance-footer">
+      <div className="star-ai-balance-footer">
         <button
           type="button"
-          className="composer-star-ai-balance-topup-btn"
+          className="star-ai-balance-topup-btn"
           disabled={openingTopUp}
           onClick={() => void handleTopUp()}
         >
