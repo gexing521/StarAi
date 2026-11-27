@@ -7074,7 +7074,16 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
     // Request setup and stream delivery share this counter. An upstream
     // gateway that fails before headers on one attempt and mid-stream on the
     // next must not multiply the budget or reset it by changing phase.
-    void phase;
+    // Pre-request network failures (offline, DNS, proxy refused) cannot even
+    // reach the relay: surface them immediately instead of looping retries.
+    if (
+      error.code === "NETWORK_ERROR" &&
+      (phase === "request" ||
+        error.details?.phase === "request" ||
+        this.providerFetchFailure !== undefined)
+    ) {
+      return undefined;
+    }
     if (!isTransientProviderRetryCode(error.code)) return undefined;
     if (
       !infinite &&
@@ -9079,12 +9088,21 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
               providerWaitMs,
               streamMs,
             );
-          }
-          // Only a completed response replenishes both budgets. Headers and
-          // partial output must not let a repeatedly broken stream retry forever.
-          if (!failed && !aborted) {
-            this.providerTransientRetryAttempt = 0;
-            this.providerRateLimitRetryAttempt = 0;
+            // Any mid-stream drop without an explicit HTTP error status from
+            // the relay belongs to the stream-drop recovery path so users see
+            // the unified fluctuation prompt and automatic retry.
+            if (
+              classifiedError.details?.phase === "stream" &&
+              (classifiedError.code === "NETWORK_ERROR" ||
+                (classifiedError.code === "PROVIDER_ERROR" &&
+                  classifiedError.details?.providerStatus === undefined))
+            ) {
+              classifiedError = {
+                ...classifiedError,
+                code: "STREAM_FAILED",
+                retriable: true,
+              };
+            }
           }
           // Re-run an invisible answer once before surfacing a finished turn.
           const silence =
@@ -9102,6 +9120,13 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
           const exemptSilence = silence && this.allowSilentCompletion;
           if (!failed && !aborted) this.allowSilentCompletion = false;
           const silentTurn = silence && !exemptSilence;
+          // Only a completed non-silent response replenishes both budgets.
+          // Headers, partial output, and empty turns must not let a broken
+          // stream retry forever.
+          if (!failed && !aborted && !silentTurn) {
+            this.providerTransientRetryAttempt = 0;
+            this.providerRateLimitRetryAttempt = 0;
+          }
           if (silentTurn && !this.silentTurnRerunAttempted) {
             this.silentTurnRerunAttempted = true;
             this.pendingSilentTurnRerun = true;

@@ -53,6 +53,7 @@ const TRANSIENT_RETRY_CODES = new Set([
   "TIMEOUT",
   "STREAM_FAILED",
   "PROVIDER_ERROR",
+  "EMPTY_MODEL_RESPONSE",
 ]);
 
 /** Whether a classified error may claim the shared non-429 transient budget. */

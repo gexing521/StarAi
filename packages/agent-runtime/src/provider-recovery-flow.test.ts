@@ -16,8 +16,8 @@ const provider: RuntimeProviderConfig = {
   supportedThinkingLevels: ["off"],
 };
 
-type Failure = "network" | "rate-limit" | "stream";
-type Step = Failure | "tool" | "success" | "stall";
+type Failure = "network" | "gateway-502" | "rate-limit" | "stream";
+type Step = Failure | "tool" | "success" | "stall" | "empty";
 
 /** Real provider adapter and agent loop; replace only fetch and the host edge. */
 function fixture(steps: Step[], retryAfterMs = 1) {
@@ -43,6 +43,13 @@ function fixture(steps: Step[], retryAfterMs = 1) {
       });
     }
     if (step === "network") throw new TypeError("fetch failed");
+    if (step === "gateway-502")
+      return new Response("Bad Gateway", { status: 502 });
+    if (step === "empty")
+      return new Response(
+        `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", created: 1, model: "fixture-model", choices: [{ index: 0, delta: { role: "assistant", content: "" }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`,
+        { headers: { "content-type": "text/event-stream" } },
+      );
     if (step === "rate-limit")
       return new Response("Rate limited", {
         status: 429,
@@ -227,7 +234,7 @@ describe("provider recovery through real agent loops (#699)", () => {
   });
 
   for (const owner of ["session", "subagent"] as const) {
-    for (const failure of ["network", "rate-limit", "stream"] as const) {
+    for (const failure of ["gateway-502", "rate-limit", "stream"] as const) {
       it(`${owner} recovers independent ${failure} outages across eleven successful tool rounds`, async () => {
         vi.useFakeTimers();
         const f = fixture([
@@ -265,9 +272,60 @@ describe("provider recovery through real agent loops (#699)", () => {
     }
   }
 
+  it("surfaces pre-request network failures immediately without looping retries", async () => {
+    vi.useFakeTimers();
+    const f = fixture(["network"]);
+    try {
+      await settle(f.runtime.prompt("Report."));
+      expect(f.requests()).toBe(1);
+      const errors = f.events.filter((e) => e.event.type === "error");
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.event).toMatchObject({
+        type: "error",
+        error: { code: "NETWORK_ERROR", retriable: true },
+      });
+      expect(
+        f.events.some(
+          (e) =>
+            e.event.type === "status" && e.event.status.activity?.phase === "retrying",
+        ),
+      ).toBe(false);
+    } finally {
+      await f.runtime.dispose();
+    }
+  });
+
+  it("auto-retries repeated empty responses beyond the initial silent-turn nudge", async () => {
+    vi.useFakeTimers();
+    const f = fixture(["empty", "empty", "empty", "success"]);
+    try {
+      await settle(f.runtime.prompt("Report."));
+      expect(f.requests()).toBe(4);
+      expect(f.events.filter((e) => e.event.type === "error")).toHaveLength(0);
+      expect(
+        f.events.some(
+          (e) =>
+            e.event.type === "status" &&
+            e.event.status.activity?.phase === "retrying" &&
+            e.event.status.activity.error?.code === "EMPTY_MODEL_RESPONSE",
+        ),
+      ).toBe(true);
+      expect(
+        f.events.some(
+          (e) =>
+            e.event.type === "message_end" &&
+            e.event.message.content === "Recovered" &&
+            e.event.message.status === "complete",
+        ),
+      ).toBe(true);
+    } finally {
+      await f.runtime.dispose();
+    }
+  });
+
   it("keeps failures bounded after a recovered tool response and reports the exhausted budget", async () => {
     vi.useFakeTimers();
-    const f = fixture(["network", "tool", ...Array<Step>(11).fill("network")]);
+    const f = fixture(["gateway-502", "tool", ...Array<Step>(11).fill("gateway-502")]);
     try {
       await settle(f.runtime.prompt("Read, then report."));
       expect(f.reads()).toBe(1);
@@ -276,7 +334,7 @@ describe("provider recovery through real agent loops (#699)", () => {
       expect(errors).toHaveLength(1);
       expect(errors[0]?.event).toMatchObject({
         type: "error",
-        error: { code: "NETWORK_ERROR", details: { retryAttempt: 10 } },
+        error: { code: "PROVIDER_ERROR", details: { retryAttempt: 10 } },
       });
       expect(f.events.filter((e) => e.event.type === "agent_end")).toHaveLength(1);
     } finally {
@@ -288,7 +346,7 @@ describe("provider recovery through real agent loops (#699)", () => {
     it(`${owner} does not replenish the budget on partial output or a phase change`, async () => {
       vi.useFakeTimers();
       const f = fixture(
-        Array.from({ length: 11 }, (_, i): Step => (i % 2 ? "stream" : "network")),
+        Array.from({ length: 11 }, (_, i): Step => (i % 2 ? "stream" : "gateway-502")),
       );
       try {
         if (owner === "session") {
@@ -311,7 +369,7 @@ describe("provider recovery through real agent loops (#699)", () => {
     });
   }
 
-  it.each(["network", "rate-limit"] as const)("cancels a %s retry wait without opening another provider request", async (failure) => {
+  it.each(["gateway-502", "rate-limit"] as const)("cancels a %s retry wait without opening another provider request", async (failure) => {
     vi.useFakeTimers();
     const f = fixture([failure], 30_000);
     try {
@@ -331,7 +389,7 @@ describe("provider recovery through real agent loops (#699)", () => {
       expect(f.events.filter((e) => e.event.type === "agent_end")).toHaveLength(1);
       expect(
         f.events.some(
-          (e) => e.event.type === "error" && e.event.error.code === "NETWORK_ERROR",
+          (e) => e.event.type === "error" && e.event.error.code === "PROVIDER_ERROR",
         ),
       ).toBe(false);
     } finally {

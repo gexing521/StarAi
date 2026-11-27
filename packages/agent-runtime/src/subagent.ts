@@ -684,7 +684,10 @@ export class SubagentRun {
     }
     // Setup and stream failures share one bounded budget, exactly as the main
     // session does, so a delegate is not abandoned on a single gateway 502.
-    void phase;
+    // Pre-request network failures surface immediately instead of looping retries.
+    if (error.code === "NETWORK_ERROR" && phase === "request") {
+      return undefined;
+    }
     if (!isTransientProviderRetryCode(error.code)) return undefined;
     if (!infinite && this.providerTransientRetryAttempt >= PROVIDER_TRANSIENT_MAX_RETRIES) {
       return undefined;

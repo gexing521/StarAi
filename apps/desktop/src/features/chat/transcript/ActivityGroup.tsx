@@ -127,12 +127,21 @@ export function runActivityLabel(
       return t("chat.compactingContext");
     case "recovering":
       return t("chat.recoveringTurn");
-    case "retrying":
-      return t("chat.retryingModel", {
+    case "retrying": {
+      const retryBase = t("chat.retryingModel", {
         delaySeconds: retryDelaySeconds(activity, now),
         attempt: activity.attempt,
         maxAttempts: activity.infinite ? "∞" : PROVIDER_RETRY_MAX_RETRIES,
       });
+      if (activity.error?.code) {
+        const key = `errors.${activity.error.code}`;
+        const summary = t(key);
+        if (summary !== key) {
+          return `${summary} · ${retryBase}`;
+        }
+      }
+      return retryBase;
+    }
     case "waiting-subagents":
       return waitingSubagentsLabel(activity, t);
   }

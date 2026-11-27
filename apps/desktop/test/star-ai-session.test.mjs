@@ -6,7 +6,9 @@ import {
   STARAI_ORIGIN,
   STARAI_REFRESH,
   StarAiSession,
+  starAiError,
 } from "../electron/main/star-ai-session.ts";
+import { createStarAiTransport } from "../electron/main/star-ai-transport.ts";
 import { starAiModelFamily } from "../../../packages/shared/src/star-ai-model-family.ts";
 
 import { STARAI_SERVICES, starAiGroupService, sortStarAiGroupsByRatio } from "../../../packages/shared/src/star-ai-services.ts";
@@ -188,4 +190,39 @@ test("an expired or malformed account and a refresh completing after logout cann
   account.forget();
   response.resolve(sessionReply());
   await assert.rejects(reading, { errorCode: "STARAI_LOGIN_REQUIRED" });
+});
+
+test("StarAI transport distinguishes unreachable network errors from explicit relay HTTP status codes", async () => {
+  let mode = "network";
+  const transport = createStarAiTransport(async () => {
+    if (mode === "network") throw new TypeError("fetch failed");
+    if (mode === "auth") throw starAiError("STARAI_LOGIN_REQUIRED", "Sign in to StarAI.");
+    return new Response("Bad Gateway", { status: 502 });
+  });
+  try {
+    const binding = await transport.bind({ accountId: 42, group: "default", models: ["gpt-test"] });
+    binding.commit();
+    const call = () =>
+      fetch(`${binding.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${binding.secretValue}`,
+        },
+        body: JSON.stringify({ model: "gpt-test", messages: [] }),
+      });
+
+    // Unreachable network drops the loopback socket without a synthetic 502.
+    await assert.rejects(call());
+
+    mode = "auth";
+    const authRes = await call();
+    assert.equal(authRes.status, 401);
+
+    mode = "relay502";
+    const relayRes = await call();
+    assert.equal(relayRes.status, 502);
+  } finally {
+    transport.close();
+  }
 });

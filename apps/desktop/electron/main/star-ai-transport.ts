@@ -87,7 +87,23 @@ async function handleChat(
   const model = body.model;
   if (typeof model !== "string" || !scope.models.has(model)) return fail(response, 403, "Model unavailable in the selected group.");
   const route = { accountId: scope.accountId, group: scope.group, model };
-  const upstream = await submit(route, { ...body, group: route.group }, signal);
+  let upstream: Response;
+  try {
+    upstream = await submit(route, { ...body, group: route.group }, signal);
+  } catch (error) {
+    const code = (error as { errorCode?: unknown } | null)?.errorCode;
+    if (code === "STARAI_LOGIN_REQUIRED") {
+      return fail(response, 401, "Sign in to StarAI.");
+    }
+    if (code === "STARAI_UNAVAILABLE") {
+      return fail(response, 503, "StarAI service unavailable (HTTP 503).");
+    }
+    // The request never reached the relay (offline, DNS, proxy, or socket error).
+    // Close the loopback socket without a synthetic HTTP status so agent-runtime
+    // classifies it as a real NETWORK_ERROR instead of a relay HTTP 502.
+    if (!response.destroyed) response.destroy();
+    return;
+  }
   if (signal.aborted || !upstream.ok) {
     await upstream.body?.cancel().catch(() => {});
     // Upstream diagnostics can include provider request headers. Expose only the status.

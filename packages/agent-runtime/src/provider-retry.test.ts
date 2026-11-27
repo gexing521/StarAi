@@ -754,6 +754,7 @@ describe("bounded transient provider retry", () => {
       "TIMEOUT",
       "STREAM_FAILED",
       "PROVIDER_ERROR",
+      "EMPTY_MODEL_RESPONSE",
     ]) {
       expect(isTransientProviderRetryCode(code)).toBe(true);
     }
@@ -762,7 +763,6 @@ describe("bounded transient provider retry", () => {
       "PROVIDER_UNAUTHORIZED",
       "CONTEXT_TOO_LARGE",
       "MODEL_NOT_CONFIGURED",
-      "EMPTY_MODEL_RESPONSE",
       "TURN_ABORTED",
     ]) {
       expect(isTransientProviderRetryCode(code)).toBe(false);
