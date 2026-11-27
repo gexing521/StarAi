@@ -25,3 +25,9 @@ export async function openAccessibilitySettings(
   await openExternal(ACCESSIBILITY_SETTINGS_URL);
   return true;
 }
+
+export async function openAccessibilitySettingsPane(
+  openExternal: (url: string) => Promise<void> = (url) => shell.openExternal(url),
+): Promise<void> {
+  await openExternal(ACCESSIBILITY_SETTINGS_URL);
+}

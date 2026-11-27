@@ -3213,6 +3213,8 @@ sklm: {
       authorizeNow: "前往授权",
       recheckNow: "我已授权，继续",
       relaunchNow: "重启 StarAI 以生效",
+      authorizeBackendNow: "授权操作后端（pi-desktop-host-core）",
+      backendGrantHint: "StarAI 主程序已获授权，但当前未签名版本还需要在「系统设置 → 隐私与安全性 → 辅助功能」中勾选「pi-desktop-host-core」。点击下方按钮拉起授权并勾选后会自动继续，无需重启。",
       deny: "暂不允许",
       enableFailed: "无法开启电脑操作，请稍后重试或前往 设置 → 行为 手动开启。",
     },

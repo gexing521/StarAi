@@ -140,9 +140,7 @@ export function createComputerUseTool(options: {
       capabilities &&
         capabilities.platform === "darwin" &&
         capabilities.backend === "macos-ax" &&
-        (capabilities.accessibility !== "granted" ||
-          (capabilities.applicationAccessibility !== undefined &&
-            capabilities.applicationAccessibility !== "granted")),
+        capabilities.accessibility !== "granted",
     );
 
     if (

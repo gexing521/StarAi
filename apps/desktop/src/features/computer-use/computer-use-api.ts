@@ -33,6 +33,8 @@ async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
 export const computerUseApi = {
   capabilities: () => invoke<ComputerCapabilities>(IPC.invoke.computerCapabilities),
   requestPermission: () => invoke<ComputerCapabilities>(IPC.invoke.computerRequestPermission),
+  requestBackendPermission: () =>
+    invoke<ComputerCapabilities>(IPC.invoke.computerRequestBackendPermission),
   grant: () => invoke<{ grant: ComputerGrantView | null }>(IPC.invoke.computerGrantDescribe),
   revokeGrant: (reason: string) =>
     invoke<{ revoked: boolean }>(IPC.invoke.computerGrantRevoke, { reason }),

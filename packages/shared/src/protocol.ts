@@ -143,6 +143,7 @@ export const IPC = {
     computerCapabilities: "pi-desktop/computer/capabilities",
     /** Ask the OS for the grant the platform needs; the user's click starts it. */
     computerRequestPermission: "pi-desktop/computer/permission/request",
+    computerRequestBackendPermission: "pi-desktop/computer/permission/requestBackend",
     computerGrantRevoke: "pi-desktop/computer/grant/revoke",
     computerGrantDescribe: "pi-desktop/computer/grant/describe",
     computerConsentRespond: "pi-desktop/computer/consent/respond",

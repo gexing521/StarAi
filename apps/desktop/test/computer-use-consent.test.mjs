@@ -251,3 +251,120 @@ test("createComputerUseTool returns COMPUTER_DISABLED or COMPUTER_OS_PERMISSION_
   assert.equal(r2.errorCode, "COMPUTER_OS_PERMISSION_MISSING");
   assert.equal(grantCreateCalled, false);
 });
+
+test("createComputerUseTool gates on authoritative backend accessibility rather than applicationAccessibility alone", async (t) => {
+  const { createComputerUseTool } = await loadConsentAndService(t);
+  const reasons = [];
+
+  // App is granted, backend host-core is NOT granted -> must still prompt for os-permission.
+  const needsBackend = createComputerUseTool({
+    getHost: () => ({
+      call: async (method) => {
+        if (method === "settings.get") return { computerUse: { enabled: true } };
+        throw new Error(`unexpected host call: ${method}`);
+      },
+    }),
+    overlay: { apply: () => {} },
+    readCapabilities: async () => ({
+      platform: "darwin",
+      backend: "macos-ax",
+      fidelity: "full",
+      accessibility: "not-requested",
+      applicationAccessibility: "granted",
+      capture: "not-requested",
+    }),
+    requestConsent: async (req) => {
+      reasons.push(req.reason);
+      return "denied";
+    },
+    resolveProvider: async () => null,
+    resolveFallbackProvider: async () => null,
+  });
+
+  const deniedResult = await needsBackend({
+    sessionId: "s1",
+    toolCallId: "c3",
+    args: { instruction: "click button" },
+    signal: new AbortController().signal,
+  });
+  assert.equal(deniedResult.ok, false);
+  assert.equal(deniedResult.errorCode, "COMPUTER_OS_PERMISSION_MISSING");
+  assert.deepEqual(reasons, ["os-permission"]);
+
+  // Backend host-core IS granted even if applicationAccessibility is not -> proceeds without prompting.
+  let promptCalled = false;
+  let currentGrant = null;
+  const backendReady = createComputerUseTool({
+    getHost: () => ({
+      call: async (method) => {
+        if (method === "settings.get") return { computerUse: { enabled: true } };
+        if (method === "computer.grantDescribe") return { grant: currentGrant };
+        if (method === "computer.grantCreate") {
+          currentGrant = {
+            grantId: "cug_auto",
+            revision: 1,
+            scope: "desktop",
+            targetId: "77:12",
+            targetLabel: "TextEdit",
+            appKey: "textedit",
+            bounds: { x: 0, y: 0, width: 400, height: 300 },
+            inputPolicy: "autonomous-in-scope",
+            capture: "a11y-only",
+            remainingBudget: 5,
+            sessionId: "s2",
+            createdAt: "2026-11-27T00:00:00.000Z",
+            expiresAt: "2026-11-27T00:15:00.000Z",
+            state: "active",
+          };
+          return currentGrant;
+        }
+        if (method === "computer.inspect") {
+          return {
+            grantId: "cug_auto",
+            revision: 1,
+            bounds: { x: 0, y: 0, width: 400, height: 300 },
+            fidelity: "full",
+            nodes: [],
+            truncated: false,
+            secureInput: false,
+          };
+        }
+        if (method === "computer.listTargets") return { targets: [] };
+        throw new Error(`unexpected host call: ${method}`);
+      },
+    }),
+    overlay: { apply: () => {} },
+    readCapabilities: async () => ({
+      platform: "darwin",
+      backend: "macos-ax",
+      fidelity: "full",
+      accessibility: "granted",
+      applicationAccessibility: "not-requested",
+      capture: "not-requested",
+    }),
+    requestConsent: async () => {
+      promptCalled = true;
+      return "denied";
+    },
+    resolveProvider: async () => null,
+    resolveFallbackProvider: async () => ({
+      id: "conv-provider",
+      name: "Conversation",
+      modelId: "gpt-6.2-sol",
+      apiKey: "secret",
+      supportsReasoning: false,
+      supportedThinkingLevels: ["off"],
+    }),
+    capture: async () => undefined,
+    complete: async () => ({ text: '{"kind":"done","summary":"ok"}' }),
+  });
+
+  const okResult = await backendReady({
+    sessionId: "s2",
+    toolCallId: "c4",
+    args: { instruction: "click button" },
+    signal: new AbortController().signal,
+  });
+  assert.equal(okResult.ok, true);
+  assert.equal(promptCalled, false);
+});

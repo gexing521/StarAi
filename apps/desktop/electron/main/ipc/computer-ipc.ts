@@ -14,7 +14,11 @@ import {
   type ComputerGrantView,
 } from "@pi-desktop/shared";
 import { capturePermissionState } from "../computer-use/capture";
-import { applicationAccessibility, openAccessibilitySettings } from "../computer-use/permission";
+import {
+  applicationAccessibility,
+  openAccessibilitySettings,
+  openAccessibilitySettingsPane,
+} from "../computer-use/permission";
 import type { HostProcess } from "../host-process";
 import type { IpcRegistrar } from "./types";
 
@@ -68,6 +72,19 @@ export function registerComputerIpc({
     const view = { ...requested, capture: capturePermissionState() };
     onPermissionRequested?.();
     await openAccessibilitySettings(view);
+    return view;
+  });
+
+  registrar.handleWithEvent(IPC.invoke.computerRequestBackendPermission, async (event) => {
+    registrar.assertMainWindowSender(event);
+    const host = getHost();
+    if (!host) hostUnavailable();
+    const requested = await host.call<ComputerCapabilities>("computer.requestPermission", {});
+    const view = { ...applicationAccessibility(requested), capture: capturePermissionState() };
+    onPermissionRequested?.();
+    if (view.platform === "darwin" && view.backend === "macos-ax" && view.accessibility !== "granted") {
+      await openAccessibilitySettingsPane();
+    }
     return view;
   });
 

@@ -14,11 +14,7 @@ import "../../styles/computer-use.css";
 
 function isOsPermissionReady(caps: ComputerCapabilities): boolean {
   if (caps.platform !== "darwin" || caps.backend !== "macos-ax") return true;
-  if (caps.accessibility !== "granted") return false;
-  if (caps.applicationAccessibility !== undefined && caps.applicationAccessibility !== "granted") {
-    return false;
-  }
-  return true;
+  return caps.accessibility === "granted";
 }
 
 async function enableComputerUseSetting(): Promise<void> {
@@ -156,7 +152,7 @@ function ConsentDialogSurface({
         finish("approved");
         return;
       }
-      const next = await computerUseApi.requestPermission();
+      const next = await computerUseApi.requestBackendPermission();
       if (settled.current) return;
       setLiveCaps(next);
       if (isOsPermissionReady(next)) {
@@ -187,12 +183,12 @@ function ConsentDialogSurface({
   const needsOsOnly = request.reason === "os-permission";
 
   const title = needsOsOnly ? t("computerUse.consent.osPermissionTitle") : t("computerUse.consent.title");
-  const primaryLabel = appGrantedBackendMissing
-    ? t("computerUse.consent.relaunchNow")
-    : waiting
-      ? t("computerUse.consent.recheckNow")
-      : osReady
-        ? t("computerUse.consent.allowAndEnable")
+  const primaryLabel = waiting
+    ? t("computerUse.consent.recheckNow")
+    : osReady
+      ? t("computerUse.consent.allowAndEnable")
+      : appGrantedBackendMissing
+        ? t("computerUse.consent.authorizeBackendNow")
         : needsBoth
           ? t("computerUse.consent.allowAndAuthorize")
           : t("computerUse.consent.authorizeNow");
@@ -228,7 +224,7 @@ function ConsentDialogSurface({
           <div className="computer-use-platform-status">
             <Badge tone="neutral">{liveCaps.backend}</Badge>
             <Badge tone={osReady ? "neutral" : "warning"}>
-              {t(`computerUse.permission.${liveCaps.applicationAccessibility ?? liveCaps.accessibility}`)}
+              {t(`computerUse.permission.${liveCaps.accessibility}`)}
             </Badge>
           </div>
 
@@ -240,7 +236,7 @@ function ConsentDialogSurface({
 
           {appGrantedBackendMissing ? (
             <p className="computer-use-status-error" role="status">
-              {t("computerUse.backendPermissionMissing")}
+              {t("computerUse.consent.backendGrantHint")}
             </p>
           ) : null}
 
@@ -268,9 +264,7 @@ function ConsentDialogSurface({
             disabled={busy}
             aria-busy={busy}
             onClick={() => {
-              if (appGrantedBackendMissing) {
-                void computerUseApi.relaunch();
-              } else if (waiting) {
+              if (waiting) {
                 void recheckCapabilities();
               } else {
                 void handleApprove();
