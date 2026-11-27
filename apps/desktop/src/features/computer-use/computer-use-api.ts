@@ -1,6 +1,8 @@
 import {
   IPC,
   type ComputerCapabilities,
+  type ComputerConsentDecision,
+  type ComputerConsentRequest,
   type ComputerCursorEvent,
   type ComputerGrantView,
 } from "@pi-desktop/shared";
@@ -47,6 +49,23 @@ export const computerUseApi = {
     if (!bridge) return () => undefined;
     return bridge.on(IPC.event.computerCursor, (payload: unknown) => {
       handler(payload as ComputerCursorEvent);
+    });
+  },
+  respondConsent: (requestId: string, decision: ComputerConsentDecision) =>
+    invoke<{ ok: boolean }>(IPC.invoke.computerConsentRespond, { requestId, decision }),
+  onConsentRequest: (handler: (request: ComputerConsentRequest) => void): (() => void) => {
+    const bridge = window.piDesktop;
+    if (!bridge) return () => undefined;
+    return bridge.on(IPC.event.computerConsentRequest, (payload: unknown) => {
+      handler(payload as ComputerConsentRequest);
+    });
+  },
+  onConsentDismiss: (handler: (requestId: string) => void): (() => void) => {
+    const bridge = window.piDesktop;
+    if (!bridge) return () => undefined;
+    return bridge.on(IPC.event.computerConsentDismiss, (payload: unknown) => {
+      const requestId = (payload as { requestId?: unknown } | undefined)?.requestId;
+      if (typeof requestId === "string" && requestId) handler(requestId);
     });
   },
 };

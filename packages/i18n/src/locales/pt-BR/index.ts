@@ -3175,6 +3175,7 @@ export const ptBR = {
     captureWithPixels: "Accessibility and screenshots",
     stepsLeft: "{{count}} steps left",
     stop: "Stop",
+    consent: en.computerUse.consent,
   },
   liveVoice: {
     ...en.liveVoice,

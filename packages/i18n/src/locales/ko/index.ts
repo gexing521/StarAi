@@ -3244,6 +3244,7 @@ importConfirm: "가져온 확장은 에이전트 프로세스 안에서 에이�
     captureWithPixels: "Accessibility and screenshots",
     stepsLeft: "{{count}} steps left",
     stop: "Stop",
+    consent: en.computerUse.consent,
   },
   liveVoice: {
     ...en.liveVoice,

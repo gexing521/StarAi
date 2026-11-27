@@ -79,7 +79,13 @@ export function ComputerUseSettings({
         <SettingsToggle
           label={t("computerUse.enable")}
           checked={value.enabled}
-          onChange={() => patch({ enabled: !value.enabled })}
+          onChange={() => {
+            const nextEnabled = !value.enabled;
+            patch({ enabled: nextEnabled });
+            if (nextEnabled && capabilities && needsAccessibilityRequest(capabilities)) {
+              void requestPermission();
+            }
+          }}
         />
       </SettingsRow>
 

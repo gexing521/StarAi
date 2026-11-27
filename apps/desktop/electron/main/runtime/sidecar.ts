@@ -1,4 +1,14 @@
-import { IPC, type AgentEventEnvelope, type ComputerGrantView, type UiMessage } from "@pi-desktop/shared";
+import {
+  IPC,
+  type AgentEventEnvelope,
+  type ComputerCapabilities,
+  type ComputerConsentDecision,
+  type ComputerConsentReason,
+  type ComputerGrantView,
+  type UiMessage,
+} from "@pi-desktop/shared";
+import { capturePermissionState } from "../computer-use/capture";
+import { applicationAccessibility } from "../computer-use/permission";
 import {
   findSubagentProviderSource,
   modelConfigWithBinding,
@@ -83,6 +93,13 @@ export type SidecarRuntimeDependencies = {
   computerCursorOverlay: Pick<ComputerCursorOverlay, "apply">;
   /** Push the live computer-use grant to the renderer's indicator. */
   publishComputerGrant: (grant: ComputerGrantView | null) => void;
+  /** Prompt the user in-app before starting Computer Use when setup/permission is missing. */
+  requestComputerConsent?: (input: {
+    reason: ComputerConsentReason;
+    instruction: string;
+    capabilities: ComputerCapabilities;
+    signal: AbortSignal;
+  }) => Promise<ComputerConsentDecision>;
   /** Signed-in StarAI account used for built-in image and video generation. */
   getStarAi?: () => Pick<StarAiAccount, "isSignedIn" | "studioMedia"> | undefined;
 };
@@ -121,6 +138,7 @@ export function createSidecarRuntime({
   currentNetworkProxy,
   computerCursorOverlay,
   publishComputerGrant,
+  requestComputerConsent,
   getStarAi,
 }: SidecarRuntimeDependencies): {
   emitAgentEvent: (envelope: AgentEventEnvelope) => void;
@@ -618,11 +636,37 @@ export function createSidecarRuntime({
   s.setLocalTool("Computer", createComputerUseTool({
     getHost: () => runtimeState.host,
     overlay: computerCursorOverlay,
+    readCapabilities: async () => {
+      if (!runtimeState.host) return null;
+      const capabilities = await runtimeState.host.call<ComputerCapabilities>("computer.capabilities", {});
+      return { ...applicationAccessibility(capabilities), capture: capturePermissionState() };
+    },
+    ...(requestComputerConsent ? { requestConsent: requestComputerConsent } : {}),
     resolveProvider: async (binding) => {
       if (!runtimeState.host) return null;
       return resolveComputerUseProvider({
         host: runtimeState.host,
         binding,
+        resolveAuth: providerId => vendorOAuth.resolveAuth(providerId),
+      });
+    },
+    resolveFallbackProvider: async (sessionId) => {
+      if (!runtimeState.host) return null;
+      const [sessionRes, settings] = await Promise.all([
+        runtimeState.host.call<{
+          session: { providerId?: string; modelId?: string } | null;
+        }>("session.get", { id: sessionId, messageLimit: 1 }).catch(() => ({ session: null })),
+        runtimeState.host.call<{
+          defaultProviderId?: string;
+          defaultModelId?: string;
+        }>("settings.get").catch(() => ({ defaultProviderId: undefined, defaultModelId: undefined })),
+      ]);
+      const providerId = sessionRes.session?.providerId || settings.defaultProviderId;
+      const modelId = sessionRes.session?.modelId || settings.defaultModelId;
+      if (!providerId || !modelId) return null;
+      return resolveComputerUseProvider({
+        host: runtimeState.host,
+        binding: { providerId, modelId },
         resolveAuth: providerId => vendorOAuth.resolveAuth(providerId),
       });
     },

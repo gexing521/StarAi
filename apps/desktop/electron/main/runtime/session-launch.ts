@@ -840,9 +840,12 @@ export function createSessionLaunchRuntime({
         // for in model settings (ADR 0334).
         fastMode: session.fastMode === true && storedModel?.fastModeAllowed === true,
         ...(jevApiKey ? { jevApiKey } : {}),
-        // A disabled feature is absent from the prompt rather than advertised
-        // and refused on every call (ADR 0342 §13).
-        ...(mode === "agent" && settings.computerUse?.enabled === true
+        // Offer `Computer` on supported desktop platforms in Agent mode so
+        // invoking it pops the direct in-app permission/consent dialog when needed.
+        ...(mode === "agent" &&
+        (settings.computerUse?.enabled === true ||
+          process.platform === "darwin" ||
+          process.platform === "win32")
           ? { computerUseEnabled: true }
           : {}),
         // Codemode is opt-in and Agent-only (ADR codemode-sandbox-boundary).

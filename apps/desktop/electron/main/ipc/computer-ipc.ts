@@ -7,7 +7,12 @@
  * never hold that authority — and every call is pinned to the trusted main
  * window, so a plugin view or the cursor overlay cannot reach even these.
  */
-import { IPC, type ComputerCapabilities, type ComputerGrantView } from "@pi-desktop/shared";
+import {
+  IPC,
+  type ComputerCapabilities,
+  type ComputerConsentDecision,
+  type ComputerGrantView,
+} from "@pi-desktop/shared";
 import { capturePermissionState } from "../computer-use/capture";
 import { applicationAccessibility, openAccessibilitySettings } from "../computer-use/permission";
 import type { HostProcess } from "../host-process";
@@ -18,13 +23,20 @@ export type ComputerIpcDependencies = {
   getHost: () => Pick<HostProcess, "call"> | null;
   /** Push the grant to the indicator and close the overlay when it ends. */
   publishGrant: (grant: ComputerGrantView | null) => void;
+  /** Resolve an in-flight Computer Use consent prompt from the main window. */
+  respondConsent?: (requestId: string, decision: ComputerConsentDecision) => boolean;
 };
 
 function hostUnavailable(): never {
   throw Object.assign(new Error("Host unavailable."), { errorCode: "HOST_UNAVAILABLE" });
 }
 
-export function registerComputerIpc({ registrar, getHost, publishGrant }: ComputerIpcDependencies): void {
+export function registerComputerIpc({
+  registrar,
+  getHost,
+  publishGrant,
+  respondConsent,
+}: ComputerIpcDependencies): void {
   registrar.handleWithEvent(IPC.invoke.computerCapabilities, async (event) => {
     registrar.assertMainWindowSender(event);
     const host = getHost();
@@ -69,5 +81,19 @@ export function registerComputerIpc({ registrar, getHost, publishGrant }: Comput
     const host = getHost();
     if (!host) hostUnavailable();
     return host.call<{ grant: ComputerGrantView | null }>("computer.grantDescribe", {});
+  });
+
+  registrar.handleWithEvent(IPC.invoke.computerConsentRespond, async (event, request: unknown) => {
+    registrar.assertMainWindowSender(event);
+    const input = (request ?? {}) as Record<string, unknown>;
+    const requestId = typeof input.requestId === "string" ? input.requestId.trim() : "";
+    const decision = input.decision;
+    if (!requestId || (decision !== "approved" && decision !== "denied")) {
+      throw Object.assign(new Error("Invalid computer consent response."), {
+        errorCode: "INVALID_PARAMS",
+      });
+    }
+    const ok = respondConsent ? respondConsent(requestId, decision) : false;
+    return { ok };
   });
 }

@@ -31,10 +31,10 @@ export const computerUseParameters = {
 };
 
 export const computerUseDescription = [
-  "Operate the one native application window the user granted you, through the accessibility layer.",
-  "Give a single concrete task in `instruction`; a separate model configured for computer use reads the window and performs the steps.",
-  "You do not choose the window, and you cannot click coordinates yourself: the user picks the target in PI-Desktop, and every step is re-validated against it.",
+  "Operate native desktop applications on the user's computer through the OS accessibility layer.",
+  "Give a single concrete task in `instruction`; StarAI will prompt the user directly for approval or OS accessibility permission if needed before running the steps.",
+  "You do not choose the window, and you cannot click coordinates yourself: the runtime binds the target window, and every step is re-validated against it.",
   "Use `observeOnly` to read the window without changing it.",
-  "The call fails with a COMPUTER_* code when the feature is off, no model is configured, no grant is active, the grant expired, or the platform has no backend. Those are the user's to fix — report them instead of retrying.",
-  "This is not a substitute for Bash, file tools, or the browser tool. Use it only for a GUI application the user has handed over.",
+  "If the user declines permission or the call returns a COMPUTER_* error (such as COMPUTER_DISABLED, COMPUTER_OS_PERMISSION_MISSING, or COMPUTER_STOPPED_BY_USER), report the reason clearly instead of retrying.",
+  "This is not a substitute for Bash, file tools, or the browser tool when those are better suited. Use it when the user asks for native GUI desktop control.",
 ].join(" ");

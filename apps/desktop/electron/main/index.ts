@@ -71,6 +71,7 @@ import { registerApplicationActivation } from "./bootstrap/app-activation";
 import { createHostRuntime } from "./runtime/host";
 import { createSidecarRuntime } from "./runtime/sidecar";
 import { createComputerCursorOverlay } from "./computer-use/cursor-overlay";
+import { createComputerConsentBroker } from "./computer-use/consent-broker";
 import { createEventPersistence } from "./runtime/event-persistence";
 import { createPlanRuntime } from "./runtime/plans";
 import { createModeServices } from "./runtime/mode-services";
@@ -816,6 +817,10 @@ const { persistAgentEvent } = eventPersistence;
 const computerCursorOverlay = createComputerCursorOverlay({
   log: (message, data) => logger.app("runtime", "warn", message, data),
 });
+const computerConsentBroker = createComputerConsentBroker({
+  getMainWindow: () => mainState.mainWindow,
+  send: sendToRenderer,
+});
 function publishComputerGrant(grant: ComputerGrantView | null): void {
   sendToRenderer(IPC.event.computerGrantChanged, { grant });
   if (!grant || grant.state !== "active") computerCursorOverlay.close();
@@ -861,6 +866,7 @@ const sidecarRuntime = createSidecarRuntime({
   getStarAi: () => starAi,
   computerCursorOverlay,
   publishComputerGrant,
+  requestComputerConsent: computerConsentBroker.request,
 });
 emitAgentEvent = sidecarRuntime.emitAgentEvent;
 const { startSidecar } = sidecarRuntime;
@@ -1001,6 +1007,7 @@ function registerIpc() {
     getMainWindow,
     getHost,
     publishComputerGrant,
+    respondComputerConsent: computerConsentBroker.respond,
     getSidecar,
     getAgentHostBridge: () => mainState.agentHostBridge,
     getBackendRouter: () => startupState.backendRouter,
@@ -1169,6 +1176,10 @@ void app.whenReady().then(() => {
 
 // The widget is chrome for a call this window owns; it must never outlive the app.
 app.once("will-quit", () => liveVoiceWidget.close());
+app.once("will-quit", () => {
+  computerConsentBroker.dispose();
+  computerCursorOverlay.close();
+});
 app.once("will-quit", () => { void starAi?.close(); });
 
 registerApplicationStartup({

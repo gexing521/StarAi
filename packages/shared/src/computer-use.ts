@@ -210,6 +210,15 @@ export function needsAccessibilityRequest(capabilities: ComputerCapabilities): b
     && (permission === "not-requested" || permission === "denied");
 }
 
+export type ComputerConsentReason = "enable" | "os-permission" | "enable-and-os-permission";
+export type ComputerConsentRequest = {
+  requestId: string;
+  reason: ComputerConsentReason;
+  instruction: string;
+  capabilities: ComputerCapabilities;
+};
+export type ComputerConsentDecision = "approved" | "denied";
+
 export type ComputerGrantView = {
   grantId: string;
   /**

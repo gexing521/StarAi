@@ -59,6 +59,10 @@ export type RegisterIpcDependencies = {
   getHost: () => HostProcess | null;
   /** Push the live computer-use grant to the renderer's indicator. */
   publishComputerGrant: (grant: import("@pi-desktop/shared").ComputerGrantView | null) => void;
+  respondComputerConsent?: (
+    requestId: string,
+    decision: import("@pi-desktop/shared").ComputerConsentDecision,
+  ) => boolean;
   traySessions: ReturnType<typeof createTraySessions>;
   taskbarUnreadBadge: ReturnType<typeof createTaskbarUnreadBadge>;
   getSidecar: () => AgentSidecar | null;
@@ -113,6 +117,7 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     getMainWindow,
     getHost,
     publishComputerGrant,
+    respondComputerConsent,
     getSidecar,
     getAgentHostBridge,
     getBackendRouter,
@@ -360,7 +365,12 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     // the OS, and the path is the one the catalog derived for that mode id.
     openPath: (path) => shell.openPath(stripWinLongPrefix(path)),
   });
-  registerComputerIpc({ registrar, getHost, publishGrant: publishComputerGrant });
+  registerComputerIpc({
+    registrar,
+    getHost,
+    publishGrant: publishComputerGrant,
+    respondConsent: respondComputerConsent,
+  });
   registerWorktreeIpc({
     registrar,
     getHost,

@@ -15,6 +15,7 @@ import {
   IconPanelOpen,
 } from "../../components/icons";
 import { LifecycleConfirmationDialog } from "../../components/LifecycleConfirmationDialog";
+import { ComputerConsentDialog } from "../computer-use/ComputerConsentDialog";
 import { ProjectCreateDialog } from "../../components/ProjectCreateDialog";
 import { SearchDialog } from "../../components/SearchDialog";
 import { Sidebar } from "../../components/Sidebar";
@@ -373,6 +374,7 @@ export function AppShell() {
       ) : null}
       <ProjectCreateDialog />
       <LifecycleConfirmationDialog />
+      <ComputerConsentDialog />
       {splash}
       {startupRecovery}
     </div>

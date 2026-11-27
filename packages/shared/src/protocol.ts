@@ -145,6 +145,7 @@ export const IPC = {
     computerRequestPermission: "pi-desktop/computer/permission/request",
     computerGrantRevoke: "pi-desktop/computer/grant/revoke",
     computerGrantDescribe: "pi-desktop/computer/grant/describe",
+    computerConsentRespond: "pi-desktop/computer/consent/respond",
     agentCompact: "pi-desktop/agent/compact",
     agentAbort: "pi-desktop/agent/abort",
     agentStopSubagents: "pi-desktop/agent/stop-subagents",
@@ -588,6 +589,9 @@ export const IPC = {
     computerCursor: "pi-desktop/computer/event/cursor",
     /** One completed loop step, for the indicator's progress line. */
     computerStep: "pi-desktop/computer/event/step",
+    /** Prompt the user to enable computer use and/or grant OS Accessibility permission. */
+    computerConsentRequest: "pi-desktop/computer/event/consentRequest",
+    computerConsentDismiss: "pi-desktop/computer/event/consentDismiss",
   },
 } as const;
 

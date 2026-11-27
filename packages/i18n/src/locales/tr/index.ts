@@ -3237,6 +3237,7 @@ importConfirm: "İçe aktarılan uzantılar ajan sürecinde, ajanın kendi araç
     captureWithPixels: "Accessibility and screenshots",
     stepsLeft: "{{count}} steps left",
     stop: "Stop",
+    consent: en.computerUse.consent,
   },
   liveVoice: {
     ...en.liveVoice,

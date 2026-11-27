@@ -4,6 +4,9 @@ import {
   validateComputerToolArgs,
   type AppSettings,
   type ComputerActResult,
+  type ComputerCapabilities,
+  type ComputerConsentDecision,
+  type ComputerConsentReason,
   type ComputerCursorEvent,
   type ComputerGrantView,
   type ComputerInspection,
@@ -96,6 +99,17 @@ export function createComputerUseTool(options: {
   getHost: () => Pick<HostProcess, "call"> | null;
   /** Builds a provider config for the user's computer-use binding. */
   resolveProvider: ComputerUseLaunchResolver;
+  /** Falls back to the active conversation model when no dedicated binding is configured. */
+  resolveFallbackProvider?: (sessionId: string) => Promise<RuntimeProviderConfig | null>;
+  /** Reads platform capabilities including app/OS Accessibility status. */
+  readCapabilities?: () => Promise<ComputerCapabilities | null>;
+  /** Prompts the user in-app to enable computer use and/or grant OS Accessibility permission. */
+  requestConsent?: (input: {
+    reason: ComputerConsentReason;
+    instruction: string;
+    capabilities: ComputerCapabilities;
+    signal: AbortSignal;
+  }) => Promise<ComputerConsentDecision>;
   overlay: Pick<ComputerCursorOverlay, "apply">;
   onStep?: (step: ComputerStepRecord & { sessionId: string }) => void;
   onGrant?: (grant: ComputerGrantView | null) => void;
@@ -115,16 +129,64 @@ export function createComputerUseTool(options: {
     const host = options.getHost();
     if (!host) return failure("HOST_UNAVAILABLE", "Host unavailable.");
 
-    const settings = await host.call<AppSettings>("settings.get");
-    const computerUse = settings.computerUse;
-    if (computerUse?.enabled !== true) {
+    let settings = await host.call<AppSettings>("settings.get");
+    let computerUse = settings.computerUse;
+    let enabled = computerUse?.enabled === true;
+
+    const capabilities = options.readCapabilities
+      ? await options.readCapabilities().catch(() => null)
+      : null;
+    const needsOsPermission = Boolean(
+      capabilities &&
+        capabilities.platform === "darwin" &&
+        capabilities.backend === "macos-ax" &&
+        (capabilities.accessibility !== "granted" ||
+          (capabilities.applicationAccessibility !== undefined &&
+            capabilities.applicationAccessibility !== "granted")),
+    );
+
+    if (
+      (!enabled || needsOsPermission) &&
+      options.requestConsent &&
+      capabilities &&
+      capabilities.backend !== "unsupported"
+    ) {
+      const reason: ComputerConsentReason =
+        !enabled && needsOsPermission
+          ? "enable-and-os-permission"
+          : !enabled
+            ? "enable"
+            : "os-permission";
+      const decision = await options.requestConsent({
+        reason,
+        instruction: input.instruction,
+        capabilities,
+        signal,
+      });
+      if (signal.aborted) {
+        return failure("TURN_ABORTED", "The computer-use run was stopped.");
+      }
+      if (decision !== "approved") {
+        return failure(
+          !enabled ? "COMPUTER_DISABLED" : "COMPUTER_OS_PERMISSION_MISSING",
+          !enabled
+            ? "The user declined to enable computer use."
+            : "The user cancelled the macOS Accessibility permission prompt.",
+        );
+      }
+      settings = await host.call<AppSettings>("settings.get");
+      computerUse = settings.computerUse;
+      enabled = computerUse?.enabled === true;
+    }
+
+    if (!enabled) {
       return failure(
         "COMPUTER_DISABLED",
         "Computer use is off. The user enables it in Settings > Computer use; it cannot be enabled from here.",
       );
     }
-    const binding = computerUse.model;
-    if (!binding?.providerId || !binding?.modelId) {
+    const binding = computerUse?.model;
+    if ((!binding?.providerId || !binding?.modelId) && !options.resolveFallbackProvider) {
       return failure(
         "COMPUTER_NOT_CONFIGURED",
         "Computer use has no model configured. The user picks one in Settings > Computer use. Do not substitute the conversation model.",
@@ -148,10 +210,10 @@ export function createComputerUseTool(options: {
         grant = await host.call<ComputerGrantView>("computer.grantCreate", {
           sessionId,
           origin: "agent",
-          ...(computerUse.defaultInputPolicy ? { inputPolicy: computerUse.defaultInputPolicy } : {}),
-          ...(computerUse.defaultCapture ? { capture: computerUse.defaultCapture } : {}),
-          ...(computerUse.actionBudget ? { actionBudget: computerUse.actionBudget } : {}),
-          ...(computerUse.idleExpiryMs ? { idleExpiryMs: computerUse.idleExpiryMs } : {}),
+          ...(computerUse?.defaultInputPolicy ? { inputPolicy: computerUse.defaultInputPolicy } : {}),
+          ...(computerUse?.defaultCapture ? { capture: computerUse.defaultCapture } : {}),
+          ...(computerUse?.actionBudget ? { actionBudget: computerUse.actionBudget } : {}),
+          ...(computerUse?.idleExpiryMs ? { idleExpiryMs: computerUse.idleExpiryMs } : {}),
         });
         options.onGrant?.(grant);
       } catch (error) {
@@ -165,10 +227,15 @@ export function createComputerUseTool(options: {
       }
     }
 
-    const provider = await options.resolveProvider(
-      { providerId: binding.providerId, modelId: binding.modelId },
-      sessionId,
-    );
+    const provider =
+      binding?.providerId && binding?.modelId
+        ? await options.resolveProvider(
+            { providerId: binding.providerId, modelId: binding.modelId },
+            sessionId,
+          )
+        : options.resolveFallbackProvider
+          ? await options.resolveFallbackProvider(sessionId)
+          : null;
     if (!provider) {
       return failure(
         "COMPUTER_NOT_CONFIGURED",
