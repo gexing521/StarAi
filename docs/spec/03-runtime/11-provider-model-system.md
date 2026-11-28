@@ -64,20 +64,26 @@ Protocol profiles (MVP):
 
 For signed-in StarAI accounts, Electron Main sends chat to
 `https://starlinkaisite.com/pg/chat/completions` with the model and group from
-the bound account route. It identifies the app with `User-Agent: StarAI/<version>`,
-`X-StarAI-Client: starai-desktop` and `X-StarAI-Version: <version>`.
-Only chat bound to a Claude group (the same group classification the model
-picker uses, so `claude企业组`, `claude企业组不限客户端`, `claude特价渠道` and
-other `claude`/`anthropic` names) replaces the desktop identity with the
-captured Claude Code client identity: `User-Agent:
-claude-cli/2.1.332 (external, sdk-cli)`, `x-app: cli`,
-`anthropic-version: 2023-06-01`,
-`anthropic-dangerous-direct-browser-access: true`, and the
-`x-stainless-*` set. `anthropic-beta` is not pinned: the relay derives the
-protocol betas for the converted request. `X-StarAI-Client` and
-`X-StarAI-Version` stay on the request as the app-side identification.
-For StarAI chat requests, `stream: true` requests `Accept: text/event-stream`,
-while `stream: false` or an omitted `stream` requests `application/json`.
+the bound account route. Generic groups identify the app with `User-Agent:
+StarAI/<version>`, `X-StarAI-Client: starai-desktop`, and
+`X-StarAI-Version: <version>`.
+
+Chat bound to a Claude group uses the captured Claude Code request profile
+instead of the StarAI identity. Its client-visible fields are `Accept:
+application/json`, `User-Agent: claude-cli/2.1.331 (external, local-agent,
+agent-sdk/0.3.331)`, `x-claude-code-session-id` with one UUID reused for the
+StarAiSession lifetime, `x-stainless-arch: arm64`, `x-stainless-lang: js`,
+`x-stainless-os: MacOS`, `x-stainless-package-version: 0.128.0`,
+`x-stainless-retry-count: 0`, `x-stainless-runtime: node`,
+`x-stainless-runtime-version: v26.12.1`, `x-stainless-timeout: 900`,
+`anthropic-beta: interleaved-thinking-2025-05-14,claude-code-20250219,effort-2025-11-24`,
+`anthropic-client-platform: desktop_app`, `anthropic-client-version: 7.37095.0`,
+`anthropic-dangerous-direct-browser-access: true`,
+`anthropic-version: 2023-06-01`, and `x-app: cli`.
+The Claude request omits `Origin`, `X-StarAI-Client`, `X-StarAI-Version`, and
+`X-StarAI-Route`. `Authorization` remains the StarAI relay session credential.
+Claude streaming still follows the request body `stream` field, while
+`Accept` stays `application/json` for both streaming and non-streaming turns.
 Both the chat error card and top chat notice identify a managed HTTP 403 as an
 access denial without pointing users to API key settings. The error details
 include the relay-generated `X-Oneapi-Request-Id` when available, while an

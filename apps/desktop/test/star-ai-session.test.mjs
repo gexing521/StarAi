@@ -144,21 +144,43 @@ test("Claude groups send the Claude Code client identity and other groups keep t
   await account.submitChat({ ...route, group: "default" }, { messages: [] }, signal);
 
   const [enterprise, special, kiro, unrestricted, auto, plain] = requests;
+  const claudeSessionIds = new Set();
+  const expectedClaudeHeaders = [
+    "accept", "anthropic-beta", "anthropic-client-platform", "anthropic-client-version",
+    "anthropic-dangerous-direct-browser-access", "anthropic-version", "authorization",
+    "content-type", "user-agent", "x-app", "x-claude-code-session-id", "x-stainless-arch",
+    "x-stainless-lang", "x-stainless-os", "x-stainless-package-version", "x-stainless-retry-count",
+    "x-stainless-runtime", "x-stainless-runtime-version", "x-stainless-timeout",
+  ];
   for (const bound of [enterprise, special, kiro, unrestricted]) {
     assert.equal(bound.path, "/pg/chat/completions");
-    assert.equal(bound.headers.get("User-Agent"), "claude-cli/2.1.332 (external, sdk-cli)");
+    assert.deepEqual([...bound.headers.keys()].sort(), expectedClaudeHeaders);
+    assert.equal(bound.headers.get("Accept"), "application/json");
+    assert.equal(bound.headers.get("Content-Type"), "application/json");
+    assert.equal(bound.headers.get("User-Agent"), "claude-cli/2.1.331 (external, local-agent, agent-sdk/0.3.331)");
+    assert.match(bound.headers.get("x-claude-code-session-id"), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+    claudeSessionIds.add(bound.headers.get("x-claude-code-session-id"));
+    assert.equal(bound.headers.get("anthropic-beta"), "interleaved-thinking-2025-05-14,claude-code-20250219,effort-2025-11-24");
+    assert.equal(bound.headers.get("anthropic-client-platform"), "desktop_app");
+    assert.equal(bound.headers.get("anthropic-client-version"), "7.37095.0");
     assert.equal(bound.headers.get("x-app"), "cli");
     assert.equal(bound.headers.get("anthropic-version"), "2023-06-01");
     assert.equal(bound.headers.get("anthropic-dangerous-direct-browser-access"), "true");
+    assert.equal(bound.headers.get("x-stainless-arch"), "arm64");
     assert.equal(bound.headers.get("x-stainless-lang"), "js");
+    assert.equal(bound.headers.get("x-stainless-os"), "MacOS");
     assert.equal(bound.headers.get("x-stainless-package-version"), "0.128.0");
     assert.equal(bound.headers.get("x-stainless-runtime"), "node");
-    assert.equal(bound.headers.get("x-stainless-timeout"), "600");
-    assert.equal(bound.headers.get("X-StarAI-Client"), "starai-desktop");
-    assert.equal(bound.headers.get("X-StarAI-Version"), "0.2.3");
+    assert.equal(bound.headers.get("x-stainless-retry-count"), "0");
+    assert.equal(bound.headers.get("x-stainless-runtime-version"), "v26.12.1");
+    assert.equal(bound.headers.get("x-stainless-timeout"), "900");
+    assert.equal(bound.headers.has("Origin"), false);
+    assert.equal(bound.headers.has("X-StarAI-Client"), false);
+    assert.equal(bound.headers.has("X-StarAI-Version"), false);
+    assert.equal(bound.headers.has("X-StarAI-Route"), false);
     assert.equal(bound.headers.get("Authorization"), "Bearer session-token");
   }
-  assert.equal(enterprise.headers.get("Accept"), "text/event-stream");
+  assert.equal(claudeSessionIds.size, 1);
   for (const generic of [auto, plain]) {
     assert.equal(generic.headers.get("User-Agent"), "StarAI/0.2.3");
     assert.equal(generic.headers.has("x-app"), false);
@@ -174,10 +196,10 @@ test("Claude enterprise chat negotiates SSE on consecutive turns and JSON on a n
       return sessionReply();
     }
     const { messages, stream } = JSON.parse(init.body);
-    const expected = stream === true ? "text/event-stream" : "application/json";
-    if (init.headers.get("Accept") !== expected) return new Response(null, { status: 406 });
+    const expectedResponse = stream === true ? "text/event-stream" : "application/json";
+    if (init.headers.get("Accept") !== "application/json") return new Response(null, { status: 406 });
     received.push(messages);
-    return new Response(null, { headers: { "Content-Type": expected } });
+    return new Response(null, { headers: { "Content-Type": expectedResponse } });
   }, async () => true);
   const route = { accountId: 42, group: "claude企业组", model: "claude-haiku-5-5" };
   const signal = new AbortController().signal;
@@ -195,6 +217,22 @@ test("Claude enterprise chat negotiates SSE on consecutive turns and JSON on a n
     assert.equal(reply.status, 200);
     assert.equal(reply.headers.get("Content-Type"), "application/json");
   }
+});
+
+test("Claude Code session identity rotates after the StarAI session is forgotten", async () => {
+  const ids = [];
+  const account = new StarAiSession(async (url, init) => {
+    if (url.endsWith(STARAI_REFRESH)) return sessionReply();
+    ids.push(init.headers.get("x-claude-code-session-id"));
+    return Response.json({});
+  }, async () => true);
+  const route = { accountId: 42, group: "claude企业组", model: "claude-haiku-5-5" };
+  const signal = new AbortController().signal;
+  await account.submitChat(route, { messages: [] }, signal);
+  account.forget();
+  await account.submitChat(route, { messages: [] }, signal);
+  assert.equal(ids.length, 2);
+  assert.notEqual(ids[0], ids[1]);
 });
 
 test("session requests carry StarAI client identification headers with the app version", async () => {

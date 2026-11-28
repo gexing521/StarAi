@@ -20,9 +20,13 @@ For each request ID, record which channel completed the stream and whether
 an earlier channel rejected the request.
 
 `apps/desktop/test/star-ai-session.test.mjs` checks the outbound Claude Code
-client identity for Claude groups, the StarAI identity for every other group,
-session refresh, and a request bound to `claude企业组不限客户端` whose body
-names the enterprise group.
+identity for Claude groups, including the captured beta, client, Stainless,
+runtime, and session UUID headers. It verifies that Claude requests keep
+`Accept: application/json`, omit `Origin`, `X-StarAI-Client`,
+`X-StarAI-Version`, and `X-StarAI-Route`, and reuse one UUID until the StarAI
+session is forgotten. The same test keeps the StarAI identity for every other
+group, checks session refresh, and verifies a request bound to
+`claude企业组不限客户端` whose body names the enterprise group.
 
 ## E2E-USAGE-explicit-zero-cache
 

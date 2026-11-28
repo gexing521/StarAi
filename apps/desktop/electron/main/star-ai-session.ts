@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   DEFAULT_STARAI_CURRENCY_CONFIG,
   isStarAiChatModel,
@@ -21,6 +22,7 @@ export function starAiError(code: string, message: string) {
 
 type AccountSession = { account: { id: number; name: string }; token: string; sid: string; expires: number };
 type RecordValue = Record<string, unknown>;
+type RequestOptions = { includeStarAiHeaders?: boolean };
 const record = (value: unknown): RecordValue =>
   value !== null && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
 const invalid = () => starAiError("STARAI_INVALID_RESPONSE", "StarAI returned an invalid response.");
@@ -34,6 +36,7 @@ export class StarAiSession {
   private readonly fetch: (url: string, init: RequestInit) => Promise<Response>;
   private readonly hasCookie: () => Promise<boolean>;
   private readonly clientVersion: string;
+  private claudeCodeSessionId = randomUUID();
 
   constructor(
     fetch: (url: string, init: RequestInit) => Promise<Response>,
@@ -51,15 +54,18 @@ export class StarAiSession {
     this.current = null;
     this.pending = null;
     this.currencyCache = null;
+    this.claudeCodeSessionId = randomUUID();
   }
 
-  private request(path: string, init: RequestInit = {}, token?: string) {
+  private request(path: string, init: RequestInit = {}, token?: string, options: RequestOptions = {}) {
     const headers = new Headers(init.headers);
-    headers.set("Origin", STARAI_ORIGIN);
-    if (!headers.has("Accept")) headers.set("Accept", "application/json");
-    if (!headers.has("User-Agent")) headers.set("User-Agent", `${STARAI_CLIENT_NAME}/${this.clientVersion}`);
-    headers.set("X-StarAI-Client", STARAI_CLIENT_ID);
-    headers.set("X-StarAI-Version", this.clientVersion);
+    if (options.includeStarAiHeaders !== false) {
+      headers.set("Origin", STARAI_ORIGIN);
+      if (!headers.has("Accept")) headers.set("Accept", "application/json");
+      if (!headers.has("User-Agent")) headers.set("User-Agent", `${STARAI_CLIENT_NAME}/${this.clientVersion}`);
+      headers.set("X-StarAI-Client", STARAI_CLIENT_ID);
+      headers.set("X-StarAI-Version", this.clientVersion);
+    }
     if (token) headers.set("Authorization", `Bearer ${token}`);
     return this.fetch(STARAI_ORIGIN + path, {
       ...init, headers, redirect: "error", cache: "no-store", credentials: "include",
@@ -250,17 +256,19 @@ export class StarAiSession {
   async submitChat(route: {accountId: number; group: string; model: string}, body: RecordValue, signal: AbortSignal) {
     const session = await this.session();
     if (!session || session.account.id !== route.accountId) throw required();
+    const claudeCode = isStarAiClaudeGroup(route.group);
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (body.stream === true) headers.Accept = "text/event-stream";
-    // Claude groups only admit official Claude Code clients upstream, so their
-    // chat carries a Claude Code identity instead of the StarAI desktop one.
-    if (isStarAiClaudeGroup(route.group)) {
-      Object.assign(headers, STARAI_CLAUDE_CODE_HEADERS);
+    if (claudeCode) {
+      Object.assign(headers, STARAI_CLAUDE_CODE_HEADERS, {
+        "x-claude-code-session-id": this.claudeCodeSessionId,
+      });
+    } else if (body.stream === true) {
+      headers.Accept = "text/event-stream";
     }
     const result = await this.request("/pg/chat/completions", {
       method: "POST", headers, signal,
       body: JSON.stringify({ ...body, model: route.model, group: route.group }),
-    }, session.token);
+    }, session.token, { includeStarAiHeaders: !claudeCode });
     if (result.status === 401 && this.current === session) this.current = null;
     return result;
   }
