@@ -17,7 +17,7 @@ const provider: RuntimeProviderConfig = {
 };
 
 type Failure = "network" | "gateway-502" | "rate-limit" | "stream";
-type Step = Failure | "tool" | "success" | "stall" | "empty" | "refusal";
+type Step = Failure | "tool" | "success" | "stall" | "empty" | "refusal" | "silent-thinking";
 
 /** Real provider adapter and agent loop; replace only fetch and the host edge. */
 function fixture(steps: Step[], retryAfterMs = 1) {
@@ -55,6 +55,46 @@ function fixture(steps: Step[], retryAfterMs = 1) {
         `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", created: 1, model: "fixture-model", choices: [{ index: 0, delta: { role: "assistant", content: "" }, finish_reason: "content_filter" }] })}\n\ndata: [DONE]\n\n`,
         { headers: { "content-type": "text/event-stream" } },
       );
+    if (step === "silent-thinking") {
+      // Simulates omitted-thinking relays (e.g. Claude thinking_delta with
+      // empty thinking text mapped to OpenAI reasoning_content: "") streaming
+      // past the idle timeout before emitting visible text.
+      const encoder = new TextEncoder();
+      const emptyThinkingChunk = `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", created: 1, model: "fixture-model", choices: [{ index: 0, delta: { reasoning_content: "" }, finish_reason: null }] })}\n\n`;
+      const finalChunks =
+        `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", created: 1, model: "fixture-model", choices: [{ index: 0, delta: { role: "assistant", content: "Recovered" }, finish_reason: null }] })}\n\n` +
+        `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", created: 1, model: "fixture-model", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`;
+      let emitted = 0;
+      const totalEmptyChunks = 5;
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            const signal = init?.signal;
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const onAbort = () => {
+              if (timer) clearTimeout(timer);
+              abortedRequests++;
+              controller.error(new DOMException("Request aborted", "AbortError"));
+            };
+            signal?.addEventListener("abort", onAbort, { once: true });
+            const emitNext = () => {
+              if (signal?.aborted) return;
+              if (emitted < totalEmptyChunks) {
+                emitted++;
+                controller.enqueue(encoder.encode(emptyThinkingChunk));
+                timer = setTimeout(emitNext, 10_000);
+                return;
+              }
+              controller.enqueue(encoder.encode(finalChunks));
+              controller.close();
+              signal?.removeEventListener("abort", onAbort);
+            };
+            emitNext();
+          },
+        }),
+        { headers: { "content-type": "text/event-stream" } },
+      );
+    }
     if (step === "rate-limit")
       return new Response("Rate limited", {
         status: 429,
@@ -200,6 +240,29 @@ describe("provider recovery through real agent loops (#699)", () => {
       }
     });
   }
+
+  it("keeps omitted-thinking empty reasoning deltas alive past the idle timeout without aborting", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("PI_DESKTOP_STREAM_IDLE_TIMEOUT_MS", "30000");
+    // 5 empty reasoning_content chunks spaced 10s apart = 50s > 30s idle timeout.
+    const f = fixture(["silent-thinking"]);
+    try {
+      await settle(f.runtime.prompt("Think deeply, then report."));
+      expect(f.requests()).toBe(1);
+      expect(f.abortedRequests()).toBe(0);
+      expect(f.events.filter(({ event }) => event.type === "error")).toHaveLength(0);
+      expect(
+        f.events.some(
+          ({ event }) =>
+            event.type === "message_end" &&
+            event.message.content === "Recovered" &&
+            event.message.status === "complete",
+        ),
+      ).toBe(true);
+    } finally {
+      await f.runtime.dispose();
+    }
+  });
 
   it("aborts a silent attempt and retries with a fresh request signal", async () => {
     vi.useFakeTimers();

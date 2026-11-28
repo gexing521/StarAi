@@ -8,6 +8,7 @@ import {
   carriesRetryDelayHeaders,
   classifyProviderError,
   createProviderRetryStream,
+  createStreamIdleActivity,
   delayWithAbort,
   isOpaqueBadRequest,
   isTransientProviderRetryCode,
@@ -22,6 +23,7 @@ import {
   outputTokenCeiling,
   stripOutputLimitFields,
   withoutDerivedOutputLimit,
+  withStreamIdleAttempt,
   withStreamIdleTimeout,
 } from "./provider-retry.js";
 import { activeNodeTransportRoute } from "./node-proxy.js";
@@ -1578,6 +1580,90 @@ describe("stream idle watchdog", () => {
       expect(attempts).toBe(1);
       await vi.advanceTimersByTimeAsync(600_000);
       expect(attempts).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resets the idle timer on raw provider activity heartbeats and still stalls once heartbeats stop", async () => {
+    vi.useFakeTimers();
+    try {
+      const stream = createAssistantMessageEventStream();
+      const activity = createStreamIdleActivity();
+      const onStall = vi.fn();
+      stream.push({ type: "start", partial: assistantMessage() });
+      const wrapped = withStreamIdleTimeout(
+        stream,
+        model,
+        1_000,
+        onStall,
+        activity.source,
+      );
+
+      const events: string[] = [];
+      const collected = (async () => {
+        for await (const event of wrapped) events.push(event.type);
+      })();
+
+      // Beat every 700ms for 2.1s with zero normalized events (e.g. omitted
+      // thinking empty deltas): the stream must remain alive past 1_000ms.
+      for (let i = 0; i < 3; i += 1) {
+        await vi.advanceTimersByTimeAsync(700);
+        activity.beat();
+      }
+      expect(events).toEqual(["start"]);
+      expect(onStall).not.toHaveBeenCalled();
+
+      // Once raw activity genuinely stops, the idle watchdog still fires.
+      await vi.advanceTimersByTimeAsync(1_000);
+      await collected;
+      expect(onStall).toHaveBeenCalledTimes(1);
+      expect(events).toEqual(["start", "error"]);
+      expect((await wrapped.result()).errorMessage).toContain("stream stalled");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("chains onProviderStreamEvent in withStreamIdleAttempt to keep active streams alive", async () => {
+    vi.useFakeTimers();
+    try {
+      const upstreamObserver = vi.fn();
+      let capturedOptions: any;
+      const inner = createAssistantMessageEventStream();
+      const wrapped = withStreamIdleAttempt(
+        model,
+        { onProviderStreamEvent: upstreamObserver },
+        1_000,
+        (timedOptions) => {
+          capturedOptions = timedOptions;
+          inner.push({ type: "start", partial: assistantMessage() });
+          return inner;
+        },
+      );
+
+      const events: string[] = [];
+      const collected = (async () => {
+        for await (const event of wrapped) events.push(event.type);
+      })();
+
+      await vi.advanceTimersByTimeAsync(700);
+      await capturedOptions.onProviderStreamEvent({ delta: { reasoning_content: "" } }, model);
+      await vi.advanceTimersByTimeAsync(700);
+      await capturedOptions.onProviderStreamEvent({ delta: { reasoning_content: "" } }, model);
+      expect(capturedOptions.signal.aborted).toBe(false);
+      expect(upstreamObserver).toHaveBeenCalledTimes(2);
+
+      const doneMsg = assistantMessage({
+        content: [{ type: "text", text: "finished" }],
+        stopReason: "stop",
+        errorMessage: undefined,
+      });
+      inner.push({ type: "done", reason: "stop", message: doneMsg });
+      inner.end(doneMsg);
+      await collected;
+      expect(events).toEqual(["start", "done"]);
+      expect(await wrapped.result()).toMatchObject({ stopReason: "stop" });
     } finally {
       vi.useRealTimers();
     }

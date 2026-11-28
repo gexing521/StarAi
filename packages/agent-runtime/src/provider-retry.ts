@@ -688,13 +688,45 @@ function streamIdleTimeoutMessage(timeoutMs: number): string {
   return `stream stalled: no provider events for ${timeoutMs}ms`;
 }
 
+export type StreamIdleActivitySource = {
+  /** Subscribe to raw provider wire activity; returns an optional cleanup function. */
+  subscribe: (onActivity: () => void) => (() => void) | void;
+};
+
 /**
- * Zero-event idle watchdog around a provider stream. Every event resets the
- * timer and total stream duration is never limited, so a long but productive
- * stream is forwarded unchanged. A stream that stays silent for `timeoutMs` is
- * ended as a `STREAM_FAILED`-classified error result — the same shape a dropped
- * socket produces — so the existing transient retry budget picks it up instead
- * of adding a second recovery path.
+ * Lightweight heartbeat channel feeding raw provider stream activity (such as
+ * `onProviderStreamEvent` for omitted-thinking empty deltas or keepalive pings)
+ * into `withStreamIdleTimeout`.
+ */
+export function createStreamIdleActivity(): {
+  beat: () => void;
+  source: StreamIdleActivitySource;
+} {
+  const listeners = new Set<() => void>();
+  return {
+    beat: () => {
+      for (const listener of listeners) listener();
+    },
+    source: {
+      subscribe: (onActivity) => {
+        listeners.add(onActivity);
+        return () => {
+          listeners.delete(onActivity);
+        };
+      },
+    },
+  };
+}
+
+/**
+ * Zero-event idle watchdog around a provider stream. Every normalized event —
+ * and every raw provider activity heartbeat from `activity` — resets the timer
+ * while total stream duration is never limited, so a long but active stream
+ * (including omitted-thinking reasoning streams that emit empty thinking deltas)
+ * is forwarded unchanged. A stream that stays completely silent for `timeoutMs`
+ * is ended as a `STREAM_FAILED`-classified error result — the same shape a
+ * dropped socket produces — so the existing transient retry budget picks it up
+ * instead of adding a second recovery path.
  *
  * `onStall` stops the abandoned attempt before its caller can retry. Draining
  * alone does not cancel network work. The abandoned iterator is drained to
@@ -705,47 +737,73 @@ export function withStreamIdleTimeout(
   model: Model<Api>,
   timeoutMs: number,
   onStall?: () => void,
+  activity?: StreamIdleActivitySource,
 ): AssistantMessageEventStream {
   if (timeoutMs <= 0) return inner;
   const outer = createAssistantMessageEventStream();
 
   void (async () => {
     const iterator = inner[Symbol.asyncIterator]();
-    for (;;) {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const idle = new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(streamIdleTimeoutMessage(timeoutMs))),
-          timeoutMs,
-        );
-      });
-      let step: IteratorResult<AssistantMessageEvent>;
-      try {
-        step = await Promise.race([iterator.next(), idle]);
-      } catch {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let onTimeout: (() => void) | undefined;
+    const resetTimer = () => {
+      if (!onTimeout) return;
+      if (timer !== undefined) clearTimeout(timer);
+      timer = setTimeout(onTimeout, timeoutMs);
+    };
+    const unsubscribe = activity?.subscribe(resetTimer);
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      onTimeout = undefined;
+      if (timer !== undefined) {
         clearTimeout(timer);
-        // Stop the abandoned request before exposing the failure to its
-        // retry owner. Draining alone would leave network work running.
-        onStall?.();
-        drainAbandonedStream(iterator);
-        const message = setupErrorMessage(
-          model,
-          new Error(streamIdleTimeoutMessage(timeoutMs)),
-          false,
-        );
-        outer.push({ type: "error", reason: "error", error: message });
-        outer.end(message);
-        return;
+        timer = undefined;
       }
-      clearTimeout(timer);
-      if (step.done) {
-        outer.end(await inner.result());
-        return;
+      unsubscribe?.();
+    };
+    try {
+      for (;;) {
+        const idle = new Promise<never>((_, reject) => {
+          onTimeout = () =>
+            reject(new Error(streamIdleTimeoutMessage(timeoutMs)));
+          resetTimer();
+        });
+        let step: IteratorResult<AssistantMessageEvent>;
+        try {
+          step = await Promise.race([iterator.next(), idle]);
+        } catch {
+          cleanup();
+          // Stop the abandoned request before exposing the failure to its
+          // retry owner. Draining alone would leave network work running.
+          onStall?.();
+          drainAbandonedStream(iterator);
+          const message = setupErrorMessage(
+            model,
+            new Error(streamIdleTimeoutMessage(timeoutMs)),
+            false,
+          );
+          outer.push({ type: "error", reason: "error", error: message });
+          outer.end(message);
+          return;
+        }
+        onTimeout = undefined;
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+        if (step.done) {
+          outer.end(await inner.result());
+          return;
+        }
+        outer.push(step.value);
+        if (step.value.type === "done" || step.value.type === "error") {
+          return;
+        }
       }
-      outer.push(step.value);
-      if (step.value.type === "done" || step.value.type === "error") {
-        return;
-      }
+    } finally {
+      cleanup();
     }
   })().catch((error) => {
     // The driver only rejects on a programming error; surface it the way the
@@ -756,6 +814,42 @@ export function withStreamIdleTimeout(
   });
 
   return outer;
+}
+
+/**
+ * Wrap a single provider stream attempt with its own abort controller and idle
+ * watchdog. Both normalized stream events and raw provider stream events
+ * (`onProviderStreamEvent`) reset the idle clock so active long-thinking
+ * streams with omitted thinking text are not aborted as stalled.
+ */
+export function withStreamIdleAttempt(
+  model: Model<Api>,
+  options: SimpleStreamOptions,
+  timeoutMs: number,
+  open: (timedOptions: SimpleStreamOptions) => AssistantMessageEventStream,
+): AssistantMessageEventStream {
+  if (timeoutMs <= 0) return open(options);
+  const stallAbort = new AbortController();
+  const activity = createStreamIdleActivity();
+  const previousObserver = options.onProviderStreamEvent;
+  const timedOptions: SimpleStreamOptions = {
+    ...options,
+    signal: AbortSignal.any([
+      ...(options.signal ? [options.signal] : []),
+      stallAbort.signal,
+    ]),
+    onProviderStreamEvent: (data, eventModel) => {
+      activity.beat();
+      return previousObserver?.(data, eventModel);
+    },
+  };
+  return withStreamIdleTimeout(
+    open(timedOptions),
+    model,
+    timeoutMs,
+    () => stallAbort.abort(),
+    activity.source,
+  );
 }
 
 /** Keep consuming an abandoned stream so its queued events are released. */

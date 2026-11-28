@@ -336,7 +336,7 @@ import {
   providerRateLimitDelayMs,
   providerSetupRetryDelayMs,
   streamIdleTimeoutMs,
-  withStreamIdleTimeout,
+  withStreamIdleAttempt,
 } from "./provider-retry.js";
 
 import {
@@ -2404,26 +2404,19 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
         };
         const usageTurnId = this.turnId;
         const openAttempt = (retryOptions: SimpleStreamOptions, input = requestContext) => {
-          // Each network attempt owns its idle clock and abort signal.
-          const stallAbort = new AbortController();
-          const timedOptions = {
-            ...retryOptions,
-            signal: AbortSignal.any([
-              ...(retryOptions.signal ? [retryOptions.signal] : []),
-              stallAbort.signal,
-            ]),
-            ...(input !== requestContext && retryOptions.maxTokens !== undefined
-              ? { maxTokens: clampOutputToContext(m, input, retryOptions.maxTokens) } : {}),
-          };
-          const stream = accountModelStream(m, () =>
-            this.thinkingLevel === "omit"
-              ? this.models.stream(omitThinkingModel(m), input, timedOptions)
-              : this.models.streamSimple(m, input, timedOptions), {
-              providerId: this.provider.id,
-              nativeCost: this.provider.modelConfig?.nativeCost,
-              onUsage: (usage) => this.emit({ type: "usage", usage }, usageTurnId),
-            });
-          return withStreamIdleTimeout(stream, m, streamIdleTimeoutMs(), () => stallAbort.abort());
+          const attemptRetryOptions =
+            input !== requestContext && retryOptions.maxTokens !== undefined
+              ? { ...retryOptions, maxTokens: clampOutputToContext(m, input, retryOptions.maxTokens) }
+              : retryOptions;
+          return withStreamIdleAttempt(m, attemptRetryOptions, streamIdleTimeoutMs(), (timedOptions) =>
+            accountModelStream(m, () =>
+              this.thinkingLevel === "omit"
+                ? this.models.stream(omitThinkingModel(m), input, timedOptions)
+                : this.models.streamSimple(m, input, timedOptions), {
+                providerId: this.provider.id,
+                nativeCost: this.provider.modelConfig?.nativeCost,
+                onUsage: (usage) => this.emit({ type: "usage", usage }, usageTurnId),
+              }));
         };
         const readPluginContext = opts.readPluginModelContext;
         const retryStream = createProviderRetryStream(
