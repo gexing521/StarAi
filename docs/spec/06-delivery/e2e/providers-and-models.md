@@ -21,8 +21,9 @@ an earlier channel rejected the request.
 
 `apps/desktop/test/star-ai-session.test.mjs` checks the outbound Claude Code
 identity for Claude groups, including the captured beta, client, Stainless,
-runtime, and session UUID headers. It verifies that Claude requests keep
-`Accept: application/json`, omit `Origin`, `X-StarAI-Client`,
+runtime, and session UUID headers. It verifies that Claude requests use
+`Accept: text/event-stream` for streaming turns and `application/json`
+otherwise, omit `Origin`, `X-StarAI-Client`,
 `X-StarAI-Version`, and `X-StarAI-Route`, and reuse one UUID until the StarAI
 session is forgotten. The same test keeps the StarAI identity for every other
 group, checks session refresh, and verifies a request bound to

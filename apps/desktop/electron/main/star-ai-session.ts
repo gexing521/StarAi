@@ -262,6 +262,7 @@ export class StarAiSession {
       Object.assign(headers, STARAI_CLAUDE_CODE_HEADERS, {
         "x-claude-code-session-id": this.claudeCodeSessionId,
       });
+      headers.Accept = body.stream === true ? "text/event-stream" : "application/json";
     } else if (body.stream === true) {
       headers.Accept = "text/event-stream";
     }

@@ -70,7 +70,8 @@ StarAI/<version>`, `X-StarAI-Client: starai-desktop`, and
 
 Chat bound to a Claude group uses the captured Claude Code request profile
 instead of the StarAI identity. Its client-visible fields are `Accept:
-application/json`, `User-Agent: claude-cli/2.1.331 (external, local-agent,
+text/event-stream` for streaming turns and `application/json` otherwise,
+`User-Agent: claude-cli/2.1.331 (external, local-agent,
 agent-sdk/0.3.331)`, `x-claude-code-session-id` with one UUID reused for the
 StarAiSession lifetime, `x-stainless-arch: arm64`, `x-stainless-lang: js`,
 `x-stainless-os: MacOS`, `x-stainless-package-version: 0.128.0`,
@@ -82,8 +83,8 @@ StarAiSession lifetime, `x-stainless-arch: arm64`, `x-stainless-lang: js`,
 `anthropic-version: 2023-06-01`, and `x-app: cli`.
 The Claude request omits `Origin`, `X-StarAI-Client`, `X-StarAI-Version`, and
 `X-StarAI-Route`. `Authorization` remains the StarAI relay session credential.
-Claude streaming still follows the request body `stream` field, while
-`Accept` stays `application/json` for both streaming and non-streaming turns.
+Claude streaming follows the request body `stream` field and its matching
+`Accept` value.
 Both the chat error card and top chat notice identify a managed HTTP 403 as an
 access denial without pointing users to API key settings. The error details
 include the relay-generated `X-Oneapi-Request-Id` when available, while an

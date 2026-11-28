@@ -155,7 +155,7 @@ test("Claude groups send the Claude Code client identity and other groups keep t
   for (const bound of [enterprise, special, kiro, unrestricted]) {
     assert.equal(bound.path, "/pg/chat/completions");
     assert.deepEqual([...bound.headers.keys()].sort(), expectedClaudeHeaders);
-    assert.equal(bound.headers.get("Accept"), "application/json");
+    assert.equal(bound.headers.get("Accept"), bound === enterprise ? "text/event-stream" : "application/json");
     assert.equal(bound.headers.get("Content-Type"), "application/json");
     assert.equal(bound.headers.get("User-Agent"), "claude-cli/2.1.331 (external, local-agent, agent-sdk/0.3.331)");
     assert.match(bound.headers.get("x-claude-code-session-id"), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
@@ -188,7 +188,7 @@ test("Claude groups send the Claude Code client identity and other groups keep t
   }
 });
 
-test("Claude enterprise chat negotiates SSE on consecutive turns and JSON on a non-streaming turn", async () => {
+test("Claude enterprise chat negotiates SSE for streaming turns and JSON otherwise", async () => {
   const received = [];
   const account = new StarAiSession(async (url, init) => {
     if (url.endsWith(STARAI_REFRESH)) {
@@ -197,7 +197,8 @@ test("Claude enterprise chat negotiates SSE on consecutive turns and JSON on a n
     }
     const { messages, stream } = JSON.parse(init.body);
     const expectedResponse = stream === true ? "text/event-stream" : "application/json";
-    if (init.headers.get("Accept") !== "application/json") return new Response(null, { status: 406 });
+    const expectedAccept = stream === true ? "text/event-stream" : "application/json";
+    if (init.headers.get("Accept") !== expectedAccept) return new Response(null, { status: 406 });
     received.push(messages);
     return new Response(null, { headers: { "Content-Type": expectedResponse } });
   }, async () => true);
