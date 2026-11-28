@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 
 pub const ID: &str = "starai-managed";
 const DIRECTORY: &str = "starAiDirectory";
+const DEFAULT_STARAI_MAX_TOKENS: u32 = 64_000;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -226,7 +227,16 @@ fn apply(
                     .into_iter()
                     .chain(g.models.iter().filter(|m| Some(*m) != preferred));
                 let bindings: Vec<ModelBinding> = serde_json::from_value(Value::Array(
-                    ids.map(|id| json!({"id":id, "contextWindow":context_window(id), "contextWindowSource":"user"})).collect(),
+                    ids.map(|id| {
+                        json!({
+                            "id": id,
+                            "contextWindow": context_window(id),
+                            "contextWindowSource": "user",
+                            "maxTokens": DEFAULT_STARAI_MAX_TOKENS,
+                            "maxTokensSource": "catalog"
+                        })
+                    })
+                    .collect(),
                 ))?;
                 let config =
                     json!({"models":normalize_model_bindings(&bindings), "starAiGroup":g.info})
@@ -382,10 +392,11 @@ mod tests {
                 ("notclaude-chat", 256_000)
             ]
         );
-        assert!(p
-            .models
-            .iter()
-            .all(|m| m.context_window_source.as_deref() == Some("user") && m.max_tokens == 8192));
+        assert!(p.models.iter().all(|m| {
+            m.context_window_source.as_deref() == Some("user")
+                && m.max_tokens == DEFAULT_STARAI_MAX_TOKENS
+                && m.max_tokens_source.as_deref() == Some("catalog")
+        }));
     }
 
     #[test]

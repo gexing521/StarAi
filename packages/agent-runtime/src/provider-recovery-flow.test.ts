@@ -295,13 +295,18 @@ describe("provider recovery through real agent loops (#699)", () => {
     }
   });
 
-  it("auto-retries repeated empty responses beyond the initial silent-turn nudge", async () => {
+  it("caps empty responses to the single silent-turn rerun instead of looping transient retries", async () => {
     vi.useFakeTimers();
     const f = fixture(["empty", "empty", "empty", "success"]);
     try {
       await settle(f.runtime.prompt("Report."));
-      expect(f.requests()).toBe(4);
-      expect(f.events.filter((e) => e.event.type === "error")).toHaveLength(0);
+      expect(f.requests()).toBe(2);
+      const errors = f.events.filter((e) => e.event.type === "error");
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.event).toMatchObject({
+        type: "error",
+        error: { code: "EMPTY_MODEL_RESPONSE", retriable: true },
+      });
       expect(
         f.events.some(
           (e) =>
@@ -309,15 +314,7 @@ describe("provider recovery through real agent loops (#699)", () => {
             e.event.status.activity?.phase === "retrying" &&
             e.event.status.activity.error?.code === "EMPTY_MODEL_RESPONSE",
         ),
-      ).toBe(true);
-      expect(
-        f.events.some(
-          (e) =>
-            e.event.type === "message_end" &&
-            e.event.message.content === "Recovered" &&
-            e.event.message.status === "complete",
-        ),
-      ).toBe(true);
+      ).toBe(false);
     } finally {
       await f.runtime.dispose();
     }

@@ -1,6 +1,7 @@
 import { getSupportedThinkingLevels, type Api, type Model } from "@earendil-works/pi-ai";
 import {
   effectiveContextWindow,
+  effectiveMaxTokens,
   THINKING_LEVELS,
   type ModelBinding,
   type ModelInfo,
@@ -96,6 +97,7 @@ export function modelConfigWithBinding(
         | "contextWindow"
         | "contextWindowSource"
         | "maxTokens"
+        | "maxTokensSource"
         | "thinkingLevels"
         | "thinkingProtocol"
         | "supportsReasoningEffort"
@@ -169,6 +171,13 @@ export function modelConfigWithBinding(
       binding.contextWindow,
       binding.contextWindowSource,
     ) ?? model.contextWindow;
+  const publishedMaxTokens = model.source === "generic" ? undefined : model.maxTokens;
+  const maxTokens =
+    effectiveMaxTokens(
+      publishedMaxTokens,
+      binding.maxTokens,
+      binding.maxTokensSource,
+    ) ?? model.maxTokens;
   const catalogContextWindow =
     model.catalogContextWindow ??
     (model.source === "models.dev" && model.contextWindow > 0
@@ -182,7 +191,7 @@ export function modelConfigWithBinding(
       ...(model.limit ?? {}),
       context: contextWindow,
     },
-    maxTokens: binding.maxTokens,
+    maxTokens,
     reasoning: model.source === "pi"
       ? model.reasoning || enabledThinkingLevels.some((level) => level !== "off")
       : enabledThinkingLevels.some((level) => level !== "off"),

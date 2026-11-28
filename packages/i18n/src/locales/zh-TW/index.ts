@@ -3210,7 +3210,6 @@ sklm: {
       allowAndAuthorize: "開啟並申請系統權限",
       authorizeNow: "前往授權",
       recheckNow: "我已授權，繼續",
-      relaunchNow: "重新啟動 StarAI 以生效",
       authorizeBackendNow: "授權操作後端（pi-desktop-host-core）",
       backendGrantHint: "StarAI 主程式已獲授權，但目前未簽章版本還需要在「系統設定 → 隱私與安全性 → 輔助使用」中勾選「pi-desktop-host-core」。點擊下方按鈕拉起授權並勾選後會自動繼續，無需重新啟動。",
       deny: "暫不允許",

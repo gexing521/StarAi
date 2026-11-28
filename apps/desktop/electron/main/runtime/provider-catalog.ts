@@ -83,27 +83,36 @@ export function createProviderCatalogRuntime({
     );
 
   // StarAI managed providers cannot be edited in Settings; their bindings are
-  // auto-generated with empty `thinkingLevels`, which means "follow the catalog"
-  // rather than a manual user opt-out.
+  // auto-generated with empty `thinkingLevels` (follow the catalog) and inherit
+  // published output caps from models.dev (falling back to 64k for unlisted models).
+  const STARAI_FALLBACK_MAX_TOKENS = 64_000;
   const effectiveBindingForCatalog = (
     providerId: string,
     binding: ModelBinding | undefined,
     catalogConfig: ModelConfig,
   ): ModelBinding | undefined => {
     if (!binding) return undefined;
+    if (!isStarAiProviderId(providerId)) return binding;
+    let next = binding;
+    if (!next.maxTokensSource) {
+      next = {
+        ...next,
+        maxTokensSource: "catalog",
+        ...(next.maxTokens === 8_192 ? { maxTokens: STARAI_FALLBACK_MAX_TOKENS } : {}),
+      };
+    }
     if (
-      isStarAiProviderId(providerId) &&
-      binding.thinkingLevels.length === 0 &&
+      next.thinkingLevels.length === 0 &&
       catalogConfig.source !== "generic" &&
       catalogConfig.reasoning &&
       catalogConfig.supportedThinkingLevels?.length
     ) {
-      return {
-        ...binding,
+      next = {
+        ...next,
         thinkingLevels: [...catalogConfig.supportedThinkingLevels],
       };
     }
-    return binding;
+    return next;
   };
 
   const modelsDevModelFor = (provider: RuntimeProvider, modelId: string) =>
@@ -168,7 +177,7 @@ export function createProviderCatalogRuntime({
         ...effectiveBinding,
         contextWindow: limits.binding.contextWindow ?? limits.catalogConfig.contextWindow,
         maxTokens: limits.binding.maxTokens ?? limits.catalogConfig.maxTokens,
-        maxTokensSource: binding.maxTokensSource ?? "user" as const,
+        maxTokensSource: limits.binding.maxTokensSource ?? binding.maxTokensSource ?? "user" as const,
       };
     });
     return {

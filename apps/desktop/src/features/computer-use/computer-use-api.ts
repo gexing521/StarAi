@@ -55,7 +55,6 @@ export const computerUseApi = {
   },
   respondConsent: (requestId: string, decision: ComputerConsentDecision) =>
     invoke<{ ok: boolean }>(IPC.invoke.computerConsentRespond, { requestId, decision }),
-  relaunch: () => invoke<{ ok: boolean }>(IPC.invoke.computerRelaunch),
   onConsentRequest: (handler: (request: ComputerConsentRequest) => void): (() => void) => {
     const bridge = window.piDesktop;
     if (!bridge) return () => undefined;

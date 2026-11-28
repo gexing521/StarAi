@@ -3264,7 +3264,6 @@ importConfirm: "Imported extensions run inside the agent process with the same a
       allowAndAuthorize: "Enable and request permission",
       authorizeNow: "Request permission",
       recheckNow: "I have granted it, continue",
-      relaunchNow: "Restart StarAI to apply",
       authorizeBackendNow: "Authorize backend (pi-desktop-host-core)",
       backendGrantHint: "StarAI is authorized, but on unsigned macOS builds you also need to enable “pi-desktop-host-core” in System Settings → Privacy & Security → Accessibility. Click below to trigger the prompt; no restart is needed once enabled.",
       deny: "Not now",

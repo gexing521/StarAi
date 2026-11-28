@@ -313,3 +313,35 @@ describe("unsigned thinking signature model binding", () => {
     expect(config.compat).toEqual({ supportsStrictTools: true, allowEmptySignature: value });
   });
 });
+
+describe("maxTokensSource catalog inheritance", () => {
+  it("inherits the published output cap when maxTokensSource is catalog and falls back for generic models", () => {
+    const published = { ...knownModel(), maxTokens: 128_000 };
+    const inherited = modelConfigWithBinding(published, {
+      contextWindow: 1_000_000,
+      contextWindowSource: "user",
+      maxTokens: 64_000,
+      maxTokensSource: "catalog",
+      thinkingLevels: ["high"],
+    });
+    expect(inherited.maxTokens).toBe(128_000);
+
+    const generic = genericModelConfig("unlisted-relay-model", "https://relay.example");
+    const fallback = modelConfigWithBinding(generic, {
+      contextWindow: 256_000,
+      contextWindowSource: "user",
+      maxTokens: 64_000,
+      maxTokensSource: "catalog",
+      thinkingLevels: [],
+    });
+    expect(fallback.maxTokens).toBe(64_000);
+
+    const pinned = modelConfigWithBinding(published, {
+      contextWindow: 1_000_000,
+      maxTokens: 8_192,
+      maxTokensSource: "user",
+      thinkingLevels: ["high"],
+    });
+    expect(pinned.maxTokens).toBe(8_192);
+  });
+});

@@ -822,11 +822,6 @@ const computerConsentBroker = createComputerConsentBroker({
   send: sendToRenderer,
 });
 let lastComputerPermissionRequestAt = 0;
-const relaunchAppForPermission = () => {
-  shutdownState.quitConfirmed = true;
-  shutdownState.relaunchOnExit = true;
-  app.quit();
-};
 function publishComputerGrant(grant: ComputerGrantView | null): void {
   sendToRenderer(IPC.event.computerGrantChanged, { grant });
   if (!grant || grant.state !== "active") computerCursorOverlay.close();
@@ -1014,10 +1009,9 @@ function registerIpc() {
     getHost,
     publishComputerGrant,
     respondComputerConsent: computerConsentBroker.respond,
-    onComputerPermissionRequested: () => {
-      lastComputerPermissionRequestAt = Date.now();
+    onComputerPermissionState: (granted: boolean) => {
+      lastComputerPermissionRequestAt = granted ? 0 : Date.now();
     },
-    relaunchForComputerPermission: relaunchAppForPermission,
     getSidecar,
     getAgentHostBridge: () => mainState.agentHostBridge,
     getBackendRouter: () => startupState.backendRouter,
@@ -1258,7 +1252,7 @@ registerShutdownHandlers({
     const recentPermissionFlow =
       computerConsentBroker.hasPending() ||
       (lastComputerPermissionRequestAt > 0 &&
-        Date.now() - lastComputerPermissionRequestAt < 5 * 60_000);
+        Date.now() - lastComputerPermissionRequestAt < 60_000);
     if (!recentPermissionFlow) return false;
     // System Settings sits in the foreground when sending "Quit & Reopen",
     // whereas Cmd+Q happens with a StarAI window focused.

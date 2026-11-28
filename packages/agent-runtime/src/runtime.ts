@@ -9127,7 +9127,7 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
             this.providerTransientRetryAttempt = 0;
             this.providerRateLimitRetryAttempt = 0;
           }
-          if (silentTurn && !this.silentTurnRerunAttempted) {
+          if (silentTurn && !this.silentTurnRerunAttempted && stopReason !== "length") {
             this.silentTurnRerunAttempted = true;
             this.pendingSilentTurnRerun = true;
             this.suppressSilentTurnRunEnd = true;

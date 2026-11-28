@@ -471,18 +471,26 @@ export function createSessionLaunchRuntime({
     // row that would undo it (#2120). The subagent path and enrichProvider
     // already apply the binding; the main session was the one path that
     // dropped it. Without a stored binding the catalog answer stands.
+    const starAiStoredModel =
+      storedModel && isStarAiProviderId(provider.id) && !storedModel.maxTokensSource
+        ? {
+            ...storedModel,
+            maxTokensSource: "catalog" as const,
+            ...(storedModel.maxTokens === 8_192 ? { maxTokens: 64_000 } : {}),
+          }
+        : storedModel;
     const effectiveStoredModel =
-      storedModel &&
+      starAiStoredModel &&
       isStarAiProviderId(provider.id) &&
-      storedModel.thinkingLevels.length === 0 &&
+      starAiStoredModel.thinkingLevels.length === 0 &&
       catalogModelConfig.source !== "generic" &&
       catalogModelConfig.reasoning &&
       catalogModelConfig.supportedThinkingLevels?.length
         ? {
-            ...storedModel,
+            ...starAiStoredModel,
             thinkingLevels: [...catalogModelConfig.supportedThinkingLevels],
           }
-        : storedModel;
+        : starAiStoredModel;
     const boundModelConfig = effectiveStoredModel
       ? modelConfigWithBinding(catalogModelConfig, effectiveStoredModel)
       : catalogModelConfig;

@@ -174,6 +174,10 @@ test("top-up URL guard, 1-minute polling cadence, and sidebar footer balance wir
   ]);
   assert.match(topUpSource, /STARAI_WALLET_PATH = "\/wallet"/);
   assert.match(topUpSource, /url\.protocol === "https:" && !url\.username && !url\.password/);
+  assert.match(topUpSource, /STARAI_TOPUP_EXTERNAL_PARTITION = "starai-topup-external"/);
+  assert.match(topUpSource, /isStarAiOriginUrl/);
+  assert.match(topUpSource, /openIsolatedExternalWindow/);
+  assert.match(topUpSource, /if \(activeTopUpPromise\) \{\s*return activeTopUpPromise;/);
   assert.match(balanceHookSource, /STARAI_BALANCE_POLL_INTERVAL_MS = 60_000/);
   assert.doesNotMatch(balanceHookSource, /runActive/);
   assert.doesNotMatch(toolbarSource, /StarAiBalance/);

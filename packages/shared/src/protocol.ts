@@ -147,7 +147,6 @@ export const IPC = {
     computerGrantRevoke: "pi-desktop/computer/grant/revoke",
     computerGrantDescribe: "pi-desktop/computer/grant/describe",
     computerConsentRespond: "pi-desktop/computer/consent/respond",
-    computerRelaunch: "pi-desktop/computer/relaunch",
     agentCompact: "pi-desktop/agent/compact",
     agentAbort: "pi-desktop/agent/abort",
     agentStopSubagents: "pi-desktop/agent/stop-subagents",

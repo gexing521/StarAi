@@ -29,10 +29,8 @@ export type ComputerIpcDependencies = {
   publishGrant: (grant: ComputerGrantView | null) => void;
   /** Resolve an in-flight Computer Use consent prompt from the main window. */
   respondConsent?: (requestId: string, decision: ComputerConsentDecision) => boolean;
-  /** Record that the user initiated OS accessibility authorization. */
-  onPermissionRequested?: () => void;
-  /** Restart the application cleanly after an OS permission grant. */
-  relaunchApp?: () => void;
+  /** Notify main whether OS accessibility authorization is pending (false) or granted (true). */
+  onPermissionState?: (granted: boolean) => void;
 };
 
 function hostUnavailable(): never {
@@ -44,8 +42,7 @@ export function registerComputerIpc({
   getHost,
   publishGrant,
   respondConsent,
-  onPermissionRequested,
-  relaunchApp,
+  onPermissionState,
 }: ComputerIpcDependencies): void {
   registrar.handleWithEvent(IPC.invoke.computerCapabilities, async (event) => {
     registrar.assertMainWindowSender(event);
@@ -53,7 +50,9 @@ export function registerComputerIpc({
     if (!host) hostUnavailable();
     const capabilities = await host.call<ComputerCapabilities>("computer.capabilities", {});
     // host-core cannot answer for the capture path: that one is Chromium's.
-    return { ...applicationAccessibility(capabilities), capture: capturePermissionState() };
+    const view = { ...applicationAccessibility(capabilities), capture: capturePermissionState() };
+    if (view.accessibility === "granted") onPermissionState?.(true);
+    return view;
   });
 
   // Request trust for the app visible in System Settings. The Rust child's
@@ -70,7 +69,7 @@ export function registerComputerIpc({
       ? applicationAccessibility(capabilities, true)
       : await host.call<ComputerCapabilities>("computer.requestPermission", {});
     const view = { ...requested, capture: capturePermissionState() };
-    onPermissionRequested?.();
+    onPermissionState?.(view.accessibility === "granted");
     await openAccessibilitySettings(view);
     return view;
   });
@@ -81,7 +80,7 @@ export function registerComputerIpc({
     if (!host) hostUnavailable();
     const requested = await host.call<ComputerCapabilities>("computer.requestPermission", {});
     const view = { ...applicationAccessibility(requested), capture: capturePermissionState() };
-    onPermissionRequested?.();
+    onPermissionState?.(view.accessibility === "granted");
     if (view.platform === "darwin" && view.backend === "macos-ax" && view.accessibility !== "granted") {
       await openAccessibilitySettingsPane();
     }
@@ -119,11 +118,5 @@ export function registerComputerIpc({
     }
     const ok = respondConsent ? respondConsent(requestId, decision) : false;
     return { ok };
-  });
-
-  registrar.handleWithEvent(IPC.invoke.computerRelaunch, async (event) => {
-    registrar.assertMainWindowSender(event);
-    relaunchApp?.();
-    return { ok: true };
   });
 }
