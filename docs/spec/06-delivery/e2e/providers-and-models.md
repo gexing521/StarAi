@@ -20,14 +20,32 @@ For each request ID, record which channel completed the stream and whether
 an earlier channel rejected the request.
 
 `apps/desktop/test/star-ai-session.test.mjs` checks the outbound Claude Code
-identity for Claude groups, including the captured beta, client, Stainless,
-runtime, and session UUID headers. It verifies that Claude requests use
+identity for Claude groups, including the captured `2.1.332` SDK CLI user agent,
+beta, Stainless, runtime, and session UUID headers. It verifies that Claude requests use
 `Accept: text/event-stream` for streaming turns and `application/json`
 otherwise, omit `Origin`, `X-StarAI-Client`,
 `X-StarAI-Version`, and `X-StarAI-Route`, and reuse one UUID until the StarAI
 session is forgotten. The same test keeps the StarAI identity for every other
 group, checks session refresh, and verifies a request bound to
 `claude企业组不限客户端` whose body names the enterprise group.
+
+Inspect the upstream Messages request after conversion. Its system blocks
+start with the versioned billing attribution and SDK identity, followed by
+the original workspace instructions and their cache controls. Decode
+`metadata.user_id` and check that its session ID matches the upstream header,
+including channels whose header override map predates session-ID forwarding. Confirm
+that the device digest stays stable across logout and app restart, while
+logout rotates the session ID. Replay the prepared request and check that
+the identity appears once. Preserve the actual selected tools and their
+schemas throughout the request.
+
+Have the model call an available tool, submit its result with the original
+call ID, and consume the next streamed answer through `[DONE]`, checking
+finish reasons and usage. The session test exercises this two-turn path
+through the loopback transport and checks that logout during identity loading
+prevents stale submission. RelayKit's Claude request conversion tests cover
+the resulting metadata, cached system blocks, schemas, and tool-use/result
+mapping.
 
 ## E2E-USAGE-explicit-zero-cache
 

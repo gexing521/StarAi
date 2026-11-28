@@ -8,6 +8,7 @@ import {
   type StarAiGroup,
 } from "@pi-desktop/shared";
 import { isStarAiClaudeGroup, STARAI_CLAUDE_CODE_HEADERS } from "./star-ai-claude-headers.ts";
+import { prepareStarAiClaudeRequest } from "./star-ai-claude-request.ts";
 
 export const STARAI_ORIGIN = "https://starlinkaisite.com";
 export const STARAI_COOKIE = "new_api_refresh";
@@ -36,17 +37,21 @@ export class StarAiSession {
   private readonly fetch: (url: string, init: RequestInit) => Promise<Response>;
   private readonly hasCookie: () => Promise<boolean>;
   private readonly clientVersion: string;
+  private readonly getInstallationId: () => Promise<string>;
   private claudeCodeSessionId = randomUUID();
 
   constructor(
     fetch: (url: string, init: RequestInit) => Promise<Response>,
     hasCookie: () => Promise<boolean>,
     clientVersion?: string,
+    getInstallationId?: () => Promise<string>,
   ) {
     this.fetch = fetch;
     this.hasCookie = hasCookie;
     const trimmed = clientVersion?.trim();
     this.clientVersion = trimmed ? trimmed : DEFAULT_CLIENT_VERSION;
+    const installationId = randomUUID();
+    this.getInstallationId = getInstallationId ?? (() => Promise.resolve(installationId));
   }
 
   forget() {
@@ -258,17 +263,22 @@ export class StarAiSession {
     if (!session || session.account.id !== route.accountId) throw required();
     const claudeCode = isStarAiClaudeGroup(route.group);
     const headers: Record<string, string> = { "Content-Type": "application/json" };
+    let requestBody: RecordValue = { ...body, model: route.model, group: route.group };
     if (claudeCode) {
+      const installationId = await this.getInstallationId();
+      if (this.current !== session) throw required();
+      signal.throwIfAborted();
       Object.assign(headers, STARAI_CLAUDE_CODE_HEADERS, {
         "x-claude-code-session-id": this.claudeCodeSessionId,
       });
       headers.Accept = body.stream === true ? "text/event-stream" : "application/json";
+      requestBody = prepareStarAiClaudeRequest(requestBody, installationId, this.claudeCodeSessionId);
     } else if (body.stream === true) {
       headers.Accept = "text/event-stream";
     }
     const result = await this.request("/pg/chat/completions", {
       method: "POST", headers, signal,
-      body: JSON.stringify({ ...body, model: route.model, group: route.group }),
+      body: JSON.stringify(requestBody),
     }, session.token, { includeStarAiHeaders: !claudeCode });
     if (result.status === 401 && this.current === session) this.current = null;
     return result;

@@ -1,8 +1,8 @@
 /**
  * Claude Code client headers for StarAI Claude groups.
  *
- * A StarAI Claude group is sent with the Claude Code identity captured from the
- * current Claude desktop release. The relay owns authentication, while this
+ * A StarAI Claude group is sent with the captured Claude Code SDK CLI identity.
+ * The relay owns authentication, while this
  * profile mirrors the client-visible headers that the upstream Claude endpoint
  * receives.
  *
@@ -13,14 +13,14 @@
 
 import { starAiGroupService } from "@pi-desktop/shared";
 
+export const STARAI_CLAUDE_CODE_VERSION = "2.1.332";
+
 export const STARAI_CLAUDE_CODE_HEADERS: Readonly<Record<string, string>> = {
   Accept: "application/json",
   "anthropic-beta": "interleaved-thinking-2025-05-14,claude-code-20250219,effort-2025-11-24",
-  "anthropic-client-platform": "desktop_app",
-  "anthropic-client-version": "7.37095.0",
   "anthropic-dangerous-direct-browser-access": "true",
   "anthropic-version": "2023-06-01",
-  "user-agent": "claude-cli/2.1.331 (external, local-agent, agent-sdk/0.3.331)",
+  "user-agent": `claude-cli/${STARAI_CLAUDE_CODE_VERSION} (external, sdk-cli)`,
   "x-app": "cli",
   "x-stainless-arch": "arm64",
   "x-stainless-lang": "js",
@@ -29,7 +29,7 @@ export const STARAI_CLAUDE_CODE_HEADERS: Readonly<Record<string, string>> = {
   "x-stainless-retry-count": "0",
   "x-stainless-runtime": "node",
   "x-stainless-runtime-version": "v26.12.1",
-  "x-stainless-timeout": "900",
+  "x-stainless-timeout": "600",
 };
 
 /** Claude groups follow the site's own group classification; `auto` stays generic. */

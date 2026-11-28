@@ -146,7 +146,7 @@ test("Claude groups send the Claude Code client identity and other groups keep t
   const [enterprise, special, kiro, unrestricted, auto, plain] = requests;
   const claudeSessionIds = new Set();
   const expectedClaudeHeaders = [
-    "accept", "anthropic-beta", "anthropic-client-platform", "anthropic-client-version",
+    "accept", "anthropic-beta",
     "anthropic-dangerous-direct-browser-access", "anthropic-version", "authorization",
     "content-type", "user-agent", "x-app", "x-claude-code-session-id", "x-stainless-arch",
     "x-stainless-lang", "x-stainless-os", "x-stainless-package-version", "x-stainless-retry-count",
@@ -157,12 +157,10 @@ test("Claude groups send the Claude Code client identity and other groups keep t
     assert.deepEqual([...bound.headers.keys()].sort(), expectedClaudeHeaders);
     assert.equal(bound.headers.get("Accept"), bound === enterprise ? "text/event-stream" : "application/json");
     assert.equal(bound.headers.get("Content-Type"), "application/json");
-    assert.equal(bound.headers.get("User-Agent"), "claude-cli/2.1.331 (external, local-agent, agent-sdk/0.3.331)");
+    assert.equal(bound.headers.get("User-Agent"), "claude-cli/2.1.332 (external, sdk-cli)");
     assert.match(bound.headers.get("x-claude-code-session-id"), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
     claudeSessionIds.add(bound.headers.get("x-claude-code-session-id"));
     assert.equal(bound.headers.get("anthropic-beta"), "interleaved-thinking-2025-05-14,claude-code-20250219,effort-2025-11-24");
-    assert.equal(bound.headers.get("anthropic-client-platform"), "desktop_app");
-    assert.equal(bound.headers.get("anthropic-client-version"), "7.37095.0");
     assert.equal(bound.headers.get("x-app"), "cli");
     assert.equal(bound.headers.get("anthropic-version"), "2023-06-01");
     assert.equal(bound.headers.get("anthropic-dangerous-direct-browser-access"), "true");
@@ -173,7 +171,7 @@ test("Claude groups send the Claude Code client identity and other groups keep t
     assert.equal(bound.headers.get("x-stainless-runtime"), "node");
     assert.equal(bound.headers.get("x-stainless-retry-count"), "0");
     assert.equal(bound.headers.get("x-stainless-runtime-version"), "v26.12.1");
-    assert.equal(bound.headers.get("x-stainless-timeout"), "900");
+    assert.equal(bound.headers.get("x-stainless-timeout"), "600");
     assert.equal(bound.headers.has("Origin"), false);
     assert.equal(bound.headers.has("X-StarAI-Client"), false);
     assert.equal(bound.headers.has("X-StarAI-Version"), false);
@@ -210,7 +208,7 @@ test("Claude enterprise chat negotiates SSE for streaming turns and JSON otherwi
     const reply = await account.submitChat(route, { messages, stream: true }, signal);
     assert.equal(reply.status, 200);
     assert.equal(reply.headers.get("Content-Type"), "text/event-stream");
-    assert.deepEqual(received.at(-1), messages);
+    assert.deepEqual(received.at(-1).slice(1), messages);
     messages.push({ role: "assistant", content: answer });
   }
   for (const body of [{ messages, stream: false }, { messages }]) {
@@ -222,9 +220,13 @@ test("Claude enterprise chat negotiates SSE for streaming turns and JSON otherwi
 
 test("Claude Code session identity rotates after the StarAI session is forgotten", async () => {
   const ids = [];
+  const devices = [];
   const account = new StarAiSession(async (url, init) => {
     if (url.endsWith(STARAI_REFRESH)) return sessionReply();
     ids.push(init.headers.get("x-claude-code-session-id"));
+    const metadata = JSON.parse(JSON.parse(init.body).metadata.user_id);
+    assert.equal(metadata.session_id, ids.at(-1));
+    devices.push(metadata.device_id);
     return Response.json({});
   }, async () => true);
   const route = { accountId: 42, group: "claude企业组", model: "claude-haiku-5-5" };
@@ -234,6 +236,164 @@ test("Claude Code session identity rotates after the StarAI session is forgotten
   await account.submitChat(route, { messages: [] }, signal);
   assert.equal(ids.length, 2);
   assert.notEqual(ids[0], ids[1]);
+  assert.equal(devices[0], devices[1]);
+});
+
+test("Claude identity survives retries and preserves the original system, metadata and real tools", async () => {
+  const requests = [];
+  const device = "12345678-1234-4234-8234-123456789abc";
+  const makeAccount = () => new StarAiSession(async (url, init) => {
+    if (url.endsWith(STARAI_REFRESH)) return sessionReply();
+    requests.push({ headers: init.headers, body: JSON.parse(init.body) });
+    return Response.json({});
+  }, async () => true, "0.0.1", async () => device);
+  const account = makeAccount();
+  const route = { accountId: 42, group: "claude企业组", model: "claude-haiku-5-5" };
+  const signal = new AbortController().signal;
+  const body = {
+    model: "ignored-model", group: "ignored-group", stream: true, max_tokens: 128000,
+    messages: [
+      { role: "system", content: [{ type: "text", text: "Keep the workspace rules.", cache_control: { type: "ephemeral" } }] },
+      { role: "user", content: "Use the selected workspace tool." },
+    ],
+    tools: [{ type: "function", function: {
+      name: "workspace_lookup", description: "Look up a workspace value.",
+      parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"], additionalProperties: false },
+    } }],
+    tool_choice: { type: "function", function: { name: "workspace_lookup" } },
+    parallel_tool_calls: false,
+    metadata: { trace: "preserve-this", user_id: "replace-with-the-bound-identity" },
+  };
+  const original = structuredClone(body);
+  await account.submitChat(route, body, signal);
+  const first = requests[0];
+  assert.deepEqual(first.body.messages.slice(1), original.messages);
+  assert.deepEqual(first.body.messages[0], { role: "system", content: [
+    { type: "text", text: "x-anthropic-billing-header: cc_version=2.1.332.e7e; cc_entrypoint=sdk-cli;" },
+    { type: "text", text: "You are a Claude agent, built on Anthropic's Claude Agent SDK.", cache_control: { type: "ephemeral" } },
+  ] });
+  assert.deepEqual(first.body.tools, original.tools);
+  assert.deepEqual(first.body.tool_choice, original.tool_choice);
+  assert.equal(first.body.parallel_tool_calls, false);
+  assert.equal(first.body.max_tokens, 128000);
+  assert.equal(first.body.model, route.model);
+  assert.equal(first.body.group, route.group);
+  assert.equal(first.body.metadata.trace, "preserve-this");
+  const identity = JSON.parse(first.body.metadata.user_id);
+  assert.match(identity.device_id, /^[0-9a-f]{64}$/);
+  assert.equal(identity.account_uuid, "");
+  assert.equal(identity.session_id, first.headers.get("x-claude-code-session-id"));
+  assert.deepEqual(body, original);
+
+  await account.submitChat(route, first.body, signal);
+  assert.deepEqual(requests[1].body, first.body);
+  await makeAccount().submitChat(route, original, signal);
+  const restarted = JSON.parse(requests[2].body.metadata.user_id);
+  assert.equal(restarted.device_id, identity.device_id);
+  assert.notEqual(restarted.session_id, identity.session_id);
+});
+
+test("a logout while loading the Claude device identity prevents a stale chat request", async () => {
+  const started = Promise.withResolvers();
+  const identity = Promise.withResolvers();
+  const account = new StarAiSession(async (url) => {
+    assert.ok(url.endsWith(STARAI_REFRESH));
+    return sessionReply();
+  }, async () => true, "0.0.1", () => {
+    started.resolve();
+    return identity.promise;
+  });
+  const pending = account.submitChat(
+    { accountId: 42, group: "claude企业组", model: "claude-haiku-5-5" },
+    { messages: [{ role: "user", content: "Hello" }] }, new AbortController().signal,
+  );
+  await started.promise;
+  account.forget();
+  identity.resolve("12345678-1234-4234-8234-123456789abc");
+  await assert.rejects(pending, { errorCode: "STARAI_LOGIN_REQUIRED" });
+});
+
+test("an abort while loading the Claude device identity prevents a chat request", async () => {
+  const started = Promise.withResolvers();
+  const identity = Promise.withResolvers();
+  const abort = new AbortController();
+  const account = new StarAiSession(async (url) => {
+    assert.ok(url.endsWith(STARAI_REFRESH));
+    return sessionReply();
+  }, async () => true, "0.0.1", () => {
+    started.resolve();
+    return identity.promise;
+  });
+  const pending = account.submitChat(
+    { accountId: 42, group: "claude企业组", model: "claude-haiku-5-5" },
+    { messages: [{ role: "user", content: "Hello" }] }, abort.signal,
+  );
+  await started.promise;
+  abort.abort();
+  identity.resolve("12345678-1234-4234-8234-123456789abc");
+  await assert.rejects(pending, { name: "AbortError" });
+});
+
+test("Claude loopback streams a tool call and carries its result into the next turn", async () => {
+  const requests = [];
+  const tool = { type: "function", function: {
+    name: "workspace_lookup", description: "Look up a workspace value.",
+    parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
+  } };
+  const toolCall = { id: "call_workspace", type: "function", function: {
+    name: "workspace_lookup", arguments: '{"key":"answer"}',
+  } };
+  const messages = [
+    { role: "system", content: "Keep the workspace rules." },
+    { role: "user", content: "Look up the answer and repeat it." },
+  ];
+  const account = new StarAiSession(async (url, init) => {
+    if (url.endsWith(STARAI_REFRESH)) return sessionReply();
+    const body = JSON.parse(init.body);
+    requests.push(body);
+    assert.deepEqual(body.tools, [tool]);
+    assert.deepEqual(body.messages.slice(1), messages);
+    assert.equal(JSON.parse(body.metadata.user_id).session_id, init.headers.get("x-claude-code-session-id"));
+    const first = requests.length === 1;
+    const events = [
+      { choices: [{ index: 0, delta: first ? { tool_calls: [{ index: 0, ...toolCall }] } : { content: "43" }, finish_reason: null }] },
+      { choices: [{ index: 0, delta: {}, finish_reason: first ? "tool_calls" : "stop" }] },
+      { choices: [], usage: { prompt_tokens: 12, completion_tokens: 5, total_tokens: 17 } },
+    ];
+    return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n", {
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }, async () => true);
+  const transport = createStarAiTransport((route, body, signal) => account.submitChat(route, body, signal));
+  try {
+    const binding = await transport.bind({ accountId: 42, group: "claude企业组", models: ["claude-haiku-5-5"] });
+    binding.commit();
+    const call = async () => {
+      const response = await fetch(`${binding.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${binding.secretValue}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-haiku-5-5", messages, tools: [tool], stream: true, max_tokens: 256 }),
+      });
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("Content-Type"), "text/event-stream");
+      const stream = await response.text();
+      assert.ok(stream.endsWith("data: [DONE]\n\n"));
+      return stream.split("\n").filter(line => line.startsWith("data: {")).map(line => JSON.parse(line.slice(6)));
+    };
+    const first = await call();
+    assert.deepEqual(first[0].choices[0].delta.tool_calls, [{ index: 0, ...toolCall }]);
+    assert.equal(first[1].choices[0].finish_reason, "tool_calls");
+    messages.push({ role: "assistant", content: null, tool_calls: [toolCall] });
+    messages.push({ role: "tool", tool_call_id: toolCall.id, content: "43" });
+    const second = await call();
+    assert.equal(second[0].choices[0].delta.content, "43");
+    assert.equal(second[1].choices[0].finish_reason, "stop");
+    assert.deepEqual(second[2].usage, { prompt_tokens: 12, completion_tokens: 5, total_tokens: 17 });
+    assert.equal(requests[0].metadata.user_id, requests[1].metadata.user_id);
+    assert.equal(requests[1].messages.length, messages.length + 1);
+  } finally {
+    transport.close();
+  }
 });
 
 test("session requests carry StarAI client identification headers with the app version", async () => {

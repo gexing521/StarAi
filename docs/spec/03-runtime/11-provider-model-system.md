@@ -68,23 +68,40 @@ the bound account route. Generic groups identify the app with `User-Agent:
 StarAI/<version>`, `X-StarAI-Client: starai-desktop`, and
 `X-StarAI-Version: <version>`.
 
-Chat bound to a Claude group uses the captured Claude Code request profile
-instead of the StarAI identity. Its client-visible fields are `Accept:
+Chat bound to a Claude group uses the captured Claude Code SDK CLI request
+profile. Its client-visible fields are `Accept:
 text/event-stream` for streaming turns and `application/json` otherwise,
-`User-Agent: claude-cli/2.1.331 (external, local-agent,
-agent-sdk/0.3.331)`, `x-claude-code-session-id` with one UUID reused for the
+`User-Agent: claude-cli/2.1.332 (external, sdk-cli)`,
+`x-claude-code-session-id` with one UUID reused for the
 StarAiSession lifetime, `x-stainless-arch: arm64`, `x-stainless-lang: js`,
 `x-stainless-os: MacOS`, `x-stainless-package-version: 0.128.0`,
 `x-stainless-retry-count: 0`, `x-stainless-runtime: node`,
-`x-stainless-runtime-version: v26.12.1`, `x-stainless-timeout: 900`,
+`x-stainless-runtime-version: v26.12.1`, `x-stainless-timeout: 600`,
 `anthropic-beta: interleaved-thinking-2025-05-14,claude-code-20250219,effort-2025-11-24`,
-`anthropic-client-platform: desktop_app`, `anthropic-client-version: 7.37095.0`,
 `anthropic-dangerous-direct-browser-access: true`,
 `anthropic-version: 2023-06-01`, and `x-app: cli`.
 The Claude request omits `Origin`, `X-StarAI-Client`, `X-StarAI-Version`, and
 `X-StarAI-Route`. `Authorization` remains the StarAI relay session credential.
 Claude streaming follows the request body `stream` field and its matching
 `Accept` value.
+
+Claude chat adds one system message containing the captured SDK CLI billing
+attribution (`cc_version=2.1.332.e7e; cc_entrypoint=sdk-cli`) and SDK identity
+text blocks before the original messages. The SDK identity block carries
+ephemeral cache control. Replaying a prepared request keeps a single identity
+message. Original system prompts, tool schemas, tool choices, tool call IDs,
+tool results, and explicit token limits retain their original values.
+`metadata.user_id` is a JSON string containing a 64-character SHA-256 digest
+of the local persisted installation UUID as `device_id`, an empty
+`account_uuid`, and the header's session UUID as `session_id`. The device
+digest survives account logout and app restart. Forgetting the StarAI session
+rotates the session UUID. Logout or cancellation while loading the local
+installation identity prevents the pending chat from being sent.
+The relay's OpenAI-to-Claude conversion preserves `metadata.user_id` and
+system text-block cache controls. Other OpenAI metadata stays within the
+OpenAI request boundary. The Claude channel adapter forwards a supplied
+`x-claude-code-session-id` to the upstream request.
+
 Both the chat error card and top chat notice identify a managed HTTP 403 as an
 access denial without pointing users to API key settings. The error details
 include the relay-generated `X-Oneapi-Request-Id` when available, while an

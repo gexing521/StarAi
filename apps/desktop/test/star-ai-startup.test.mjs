@@ -37,6 +37,64 @@ const { app } = await import(electron);
 const { setPartition } = await import(relay);
 hooks.deregister();
 
+test("managed Claude account wiring reuses the persisted installation identity after restart", async () => {
+  const secrets = new Map();
+  const sent = [];
+  let snapshot = null;
+  let bindings = [];
+  setPartition({
+    signedIn: true,
+    async fetch(url, init) {
+      const path = new URL(url).pathname;
+      if (path === "/api/user/auth/refresh") return Response.json({ success: true, data: {
+        access_token: "fixture", access_expires_at: Date.now() / 1000 + 900,
+        user: { id: 1, username: "Example" }, session: { sid: "fixture" },
+      } });
+      if (path === "/api/user/self/groups") return Response.json({ success: true, data: { "claude企业组": { ratio: 1.68 } } });
+      if (path === "/api/pricing") return Response.json({ success: true, vendors: [], data: [
+        { model_name: "claude-haiku-5-5", enable_groups: ["claude企业组"] },
+      ] });
+      if (path === "/api/user/models") return Response.json({ success: true, data: ["claude-haiku-5-5"] });
+      assert.equal(path, "/pg/chat/completions");
+      const body = JSON.parse(init.body);
+      const identity = JSON.parse(body.metadata.user_id);
+      assert.equal(identity.session_id, init.headers.get("x-claude-code-session-id"));
+      assert.match(identity.device_id, /^[0-9a-f]{64}$/);
+      assert.equal(body.messages[1].content, "Calculate 19 + 24.");
+      sent.push(identity);
+      return Response.json({ choices: [{ message: { role: "assistant", content: "43" }, finish_reason: "stop" }] });
+    },
+  });
+  const host = { async call(method, args) {
+    if (method === "secrets.getForRuntime") return { value: secrets.get(args.secretRef) ?? null };
+    if (method === "secrets.set") { secrets.set(args.secretRef, args.value); return; }
+    if (method === "settings.get") return {};
+    if (method === "providers.starAiSelection") return { selection: snapshot };
+    assert.equal(method, "providers.starAiConfigure");
+    bindings = args.groups;
+    snapshot = { accountId: args.accountId, groups: bindings.map(({ baseUrl, secretValue, ...row }) => row), selection: args.selection };
+  } };
+  for (let restart = 0; restart < 2; restart++) {
+    const account = createStarAiAccount(() => host, () => null);
+    try {
+      const catalog = await account.catalog();
+      assert.equal(catalog.selection.group, "claude企业组");
+      const binding = bindings[0];
+      const response = await fetch(binding.baseUrl + "/chat/completions", {
+        method: "POST", headers: { Authorization: "Bearer " + binding.secretValue, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-haiku-5-5", messages: [{ role: "user", content: "Calculate 19 + 24." }] }),
+      });
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).choices[0].message.content, "43");
+    } finally {
+      account.close();
+    }
+  }
+  assert.equal(secrets.size, 1);
+  assert.equal(sent[0].device_id, sent[1].device_id);
+  assert.notEqual(sent[0].session_id, sent[1].session_id);
+});
+
 test("only a visible, ready main window prompts, once per visit or explicit relaunch", async () => {
   let ready = false;
   let visible = false;

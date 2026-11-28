@@ -6,7 +6,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 
 type HostCall = <T = unknown>(method: string, params?: unknown) => Promise<T>;
 
-/** Owned by the main-process OAuth service, not by a provider/account. */
+/** Main-process installation identity shared by OAuth and managed Claude requests. */
 export function createInstallationIdentity(
   call: HostCall,
   newId: () => string = randomUUID,
