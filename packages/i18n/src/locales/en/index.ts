@@ -3442,6 +3442,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
     TOOL_CALL_NOT_EXECUTED: "The model wrote a tool call as text. That call was not executed.",
     EMPTY_MODEL_RESPONSE:
       "The model finished its turn without saying anything, twice in a row. Try again, or rephrase your request.",
+    MODEL_REFUSAL: "The model refused to answer due to content policy.",
     MUTATION_RETRY_BUDGET_EXHAUSTED:
       "The same edit failed three times, so this turn stopped instead of retrying blind. Ask again to continue.",
     CONTEXT_TOO_LARGE: "This chat is still too long after context recovery. Shorten your message or start a new chat.",

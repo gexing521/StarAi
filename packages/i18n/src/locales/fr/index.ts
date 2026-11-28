@@ -3285,6 +3285,7 @@ sklm: {
     "STREAM_FAILED": "La réponse a été interrompue.",
     "TOOL_CALL_NOT_EXECUTED": "Le modèle a écrit un appel d’outil sous forme de texte. Cet appel n’a pas été exécuté.",
     "EMPTY_MODEL_RESPONSE": "Le modèle a terminé son tour sans rien dire, deux fois de suite. Réessayez ou reformulez votre demande.",
+    "MODEL_REFUSAL": "Le modèle a refusé de répondre en raison de la politique de contenu.",
     "MUTATION_RETRY_BUDGET_EXHAUSTED": "La même modification a échoué trois fois, donc ce tour s'est arrêté au lieu de réessayer en aveugle. Demandez à nouveau pour continuer.",
     "CONTEXT_TOO_LARGE": "Ce chat est encore trop long après la récupération du contexte. Raccourcissez votre message ou démarrez une nouvelle discussion.",
     "CONTEXT_COMPACTION_FAILED": "Impossible de compacter le contexte du modèle de cette conversation.",

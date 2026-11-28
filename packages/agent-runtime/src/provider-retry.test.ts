@@ -759,6 +759,7 @@ describe("bounded transient provider retry", () => {
     }
     for (const code of [
       "EMPTY_MODEL_RESPONSE",
+      "MODEL_REFUSAL",
       "PROVIDER_RATE_LIMITED",
       "PROVIDER_UNAUTHORIZED",
       "CONTEXT_TOO_LARGE",

@@ -1420,4 +1420,42 @@ describe("classifyAgentError", () => {
       details: { origin: "host" },
     });
   });
+
+  it("classifies content-policy model refusals as non-retriable MODEL_REFUSAL", () => {
+    const cases = [
+      "Provider finish_reason: content_filter",
+      "Response incomplete: content_filter",
+      "The model refused to complete the request",
+      "Provider stopped with: sensitive",
+      "Provider stopped with: refusal",
+      "Provider stopped with: content_filtered",
+      "Provider stopped with: guardrail_intervened",
+      '400: {"error":{"code":"content_filter","message":"Filtered by safety policy"}}',
+      'upstream refused (claude_stop_reason=refusal)',
+    ];
+    for (const errorMessage of cases) {
+      expect(classifyAgentError(errorMessage)).toMatchObject({
+        code: "MODEL_REFUSAL",
+        retriable: false,
+      });
+      expect(
+        classifyProviderError(
+          { role: "assistant", stopReason: "error", errorMessage },
+          200,
+        ),
+      ).toMatchObject({
+        code: "MODEL_REFUSAL",
+        retriable: false,
+      });
+    }
+
+    const structuredCodeError = Object.assign(new Error("Filtered"), {
+      code: "content_filter",
+    });
+    expect(classifyAgentError(structuredCodeError)).toMatchObject({
+      code: "MODEL_REFUSAL",
+      retriable: false,
+      details: { providerCode: "content_filter" },
+    });
+  });
 });

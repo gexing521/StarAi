@@ -3287,6 +3287,7 @@ sklm: {
     "STREAM_FAILED": "Die Antwort wurde unterbrochen.",
     "TOOL_CALL_NOT_EXECUTED": "Das Modell hat einen Werkzeugaufruf als Text ausgegeben. Dieser Aufruf wurde nicht ausgeführt.",
     "EMPTY_MODEL_RESPONSE": "Das Modell beendete seinen Zug zweimal hintereinander, ohne etwas zu sagen. Versuchen Sie es erneut oder formulieren Sie Ihre Anfrage um.",
+    "MODEL_REFUSAL": "Das Modell hat die Antwort aufgrund der Inhaltsrichtlinien verweigert.",
     "MUTATION_RETRY_BUDGET_EXHAUSTED": "Die gleiche Bearbeitung schlug dreimal fehl, daher wurde dieser Zug abgebrochen, anstatt es erneut zu versuchen. Bitten Sie erneut, fortzufahren.",
     "CONTEXT_TOO_LARGE": "Dieser Chat ist nach der Kontextwiederherstellung immer noch zu lang. Kürzen Sie Ihre Nachricht oder starten Sie einen neuen Chat.",
     "CONTEXT_COMPACTION_FAILED": "Der Modellkontext dieser Konversation konnte nicht komprimiert werden.",

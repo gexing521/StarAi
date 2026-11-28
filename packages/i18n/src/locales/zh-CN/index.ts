@@ -3373,6 +3373,7 @@ sklm: {
     TOOL_CALL_NOT_EXECUTED: "模型把工具调用写成了正文，该调用没有执行。",
     EMPTY_MODEL_RESPONSE:
       "模型未返回有效输出（可能是思考过程耗尽输出上限或空响应）。可点击继续重试，或适当调低推理档位。",
+    MODEL_REFUSAL: "模型因内容策略拒绝回答。",
     MUTATION_RETRY_BUDGET_EXHAUSTED:
       "同一处修改连续失败三次，本轮已停止，不再盲目重试。再说一次即可继续。",
     CONTEXT_TOO_LARGE: "上下文恢复后对话仍然过长。请缩短消息内容或新开对话。",

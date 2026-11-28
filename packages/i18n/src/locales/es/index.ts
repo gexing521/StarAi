@@ -3285,6 +3285,7 @@ sklm: {
     "STREAM_FAILED": "La respuesta fue interrumpida.",
     "TOOL_CALL_NOT_EXECUTED": "El modelo escribió una llamada de herramienta como texto. Esa llamada no se ejecutó.",
     "EMPTY_MODEL_RESPONSE": "El modelo terminó su turno sin decir nada, dos veces seguidas. Inténtelo de nuevo o reformule su solicitud.",
+    "MODEL_REFUSAL": "El modelo se negó a responder debido a la política de contenido.",
     "MUTATION_RETRY_BUDGET_EXHAUSTED": "La misma edición falló tres veces, por lo que este turno se detuvo en lugar de volver a intentarlo a ciegas. Pregunta nuevamente para continuar.",
     "CONTEXT_TOO_LARGE": "Este chat aún dura demasiado después de la recuperación del contexto. Acorta tu mensaje o inicia un nuevo chat.",
     "CONTEXT_COMPACTION_FAILED": "No se pudo compactar el contexto del modelo de esta conversación.",

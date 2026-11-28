@@ -3318,6 +3318,7 @@ importConfirm: "İçe aktarılan uzantılar ajan sürecinde, ajanın kendi araç
     TOOL_CALL_NOT_EXECUTED: "Model bir araç çağrısını metin olarak yazdı. Bu çağrı çalıştırılmadı.",
     EMPTY_MODEL_RESPONSE:
       "Model iki tur üst üste hiçbir şey söylemeden bitirdi. Yeniden deneyin veya isteği başka türlü sorun.",
+    MODEL_REFUSAL: "Model, içerik politikası nedeniyle yanıt vermeyi reddetti.",
     MUTATION_RETRY_BUDGET_EXHAUSTED:
       "Aynı düzenleme üç kez başarısız oldu, bu yüzden körü körüne yeniden denemek yerine tur durdu. Devam etmek için yeniden sorun.",
     CONTEXT_TOO_LARGE: "Bağlam kurtarmadan sonra bu sohbet hâlâ çok uzun. İletinizi kısaltın veya yeni sohbet açın.",

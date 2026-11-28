@@ -118,6 +118,20 @@ const TURN_ABORTED_MESSAGE_PATTERN =
  * by the Google Generative AI adapter" (issue #1072). */
 const UNSUPPORTED_ADAPTER_OPTION_PATTERN = /is not supported by the .{0,60}adapter/i;
 
+/**
+ * Model-level content/safety policy refusal reported by provider adapters
+ * (OpenAI `finish_reason: content_filter`, Responses `Response incomplete:
+ * content_filter`, Anthropic `stop_reason: refusal` / `sensitive`, Bedrock
+ * `guardrail_intervened` / `content_filtered`, Gemini safety finish reasons,
+ * and structured relay refusal markers). Re-sending the same prompt fails the
+ * same way, so these stay terminal without automatic retries.
+ */
+const MODEL_REFUSAL_PATTERN =
+  /provider finish_reason:\s*(?:content_filter|safety|prohibited_content|recitation|blocklist|spii)\b|response incomplete:\s*content_filter\b|the model refused to complete the request|provider stopped with:\s*(?:sensitive|refusal|content_filter(?:ed)?|guardrail_intervened)\b|claude_stop_reason\s*=\s*refusal\b|"(?:code|type|finish_reason|stop_reason)"\s*:\s*"(?:content_filter|content_filtered|refusal|guardrail_intervened)"/i;
+
+const MODEL_REFUSAL_CODE_PATTERN =
+  /^(?:content_filter|content_filtered|refusal|guardrail_intervened)$/i;
+
 function redactSensitiveErrorText(message: string): string {
   return message
     .replace(
@@ -666,6 +680,17 @@ export function classifyAgentError(err: unknown): ClassifiedAgentError {
   // some layer attached to the same message cannot re-arm the retry budget.
   if (UNSUPPORTED_ADAPTER_OPTION_PATTERN.test(rawMessage)) {
     return result("PROVIDER_ERROR", false);
+  }
+
+  // Content/safety policy refusal from the model or upstream gateway. Probed
+  // before the status table and generic stream fallbacks so an HTTP 200 SSE
+  // refusal or gateway-wrapped refusal surfaces clearly without retrying.
+  if (
+    MODEL_REFUSAL_PATTERN.test(rawMessage) ||
+    (typeof providerCode === "string" &&
+      MODEL_REFUSAL_CODE_PATTERN.test(providerCode))
+  ) {
+    return result(ErrorCodes.MODEL_REFUSAL, false);
   }
 
   // These terminal billing/account exhaustion errors can also be HTTP 429.

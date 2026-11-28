@@ -139,6 +139,12 @@ export const ErrorCodes = {
   CONTEXT_COMPACTION_FAILED: "CONTEXT_COMPACTION_FAILED",
   STREAM_FAILED: "STREAM_FAILED",
   EMPTY_MODEL_RESPONSE: "EMPTY_MODEL_RESPONSE",
+  /**
+   * The model refused to answer due to content or safety policy (for example,
+   * Anthropic `stop_reason: "refusal"` or OpenAI `finish_reason: "content_filter"`).
+   * Re-sending the same prompt fails the same way, so it is terminal.
+   */
+  MODEL_REFUSAL: "MODEL_REFUSAL",
   TOOL_CALL_NOT_EXECUTED: "TOOL_CALL_NOT_EXECUTED",
   /**
    * The Node agent sidecar process died mid-turn (native crash, kill, or an

@@ -17,7 +17,7 @@ const provider: RuntimeProviderConfig = {
 };
 
 type Failure = "network" | "gateway-502" | "rate-limit" | "stream";
-type Step = Failure | "tool" | "success" | "stall" | "empty";
+type Step = Failure | "tool" | "success" | "stall" | "empty" | "refusal";
 
 /** Real provider adapter and agent loop; replace only fetch and the host edge. */
 function fixture(steps: Step[], retryAfterMs = 1) {
@@ -48,6 +48,11 @@ function fixture(steps: Step[], retryAfterMs = 1) {
     if (step === "empty")
       return new Response(
         `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", created: 1, model: "fixture-model", choices: [{ index: 0, delta: { role: "assistant", content: "" }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`,
+        { headers: { "content-type": "text/event-stream" } },
+      );
+    if (step === "refusal")
+      return new Response(
+        `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", created: 1, model: "fixture-model", choices: [{ index: 0, delta: { role: "assistant", content: "" }, finish_reason: "content_filter" }] })}\n\ndata: [DONE]\n\n`,
         { headers: { "content-type": "text/event-stream" } },
       );
     if (step === "rate-limit")
@@ -313,6 +318,29 @@ describe("provider recovery through real agent loops (#699)", () => {
             e.event.type === "status" &&
             e.event.status.activity?.phase === "retrying" &&
             e.event.status.activity.error?.code === "EMPTY_MODEL_RESPONSE",
+        ),
+      ).toBe(false);
+    } finally {
+      await f.runtime.dispose();
+    }
+  });
+
+  it("surfaces content-policy model refusals immediately as MODEL_REFUSAL without retrying", async () => {
+    vi.useFakeTimers();
+    const f = fixture(["refusal", "success"]);
+    try {
+      await settle(f.runtime.prompt("Report."));
+      expect(f.requests()).toBe(1);
+      const errors = f.events.filter((e) => e.event.type === "error");
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.event).toMatchObject({
+        type: "error",
+        error: { code: "MODEL_REFUSAL", retriable: false },
+      });
+      expect(
+        f.events.some(
+          (e) =>
+            e.event.type === "status" && e.event.status.activity?.phase === "retrying",
         ),
       ).toBe(false);
     } finally {

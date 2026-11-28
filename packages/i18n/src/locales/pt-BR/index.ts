@@ -3255,6 +3255,7 @@ export const ptBR = {
     STREAM_FAILED: "A resposta foi interrompida.",
     TOOL_CALL_NOT_EXECUTED: "O modelo escreveu uma chamada de ferramenta como texto. Essa chamada não foi executada.",
     EMPTY_MODEL_RESPONSE: "O modelo encerrou a rodada sem gerar resposta, duas vezes seguidas. Tente novamente ou reformule sua solicitação.",
+    MODEL_REFUSAL: "O modelo recusou responder devido à política de conteúdo.",
     MUTATION_RETRY_BUDGET_EXHAUSTED: "A mesma edição falhou três vezes seguidas. A rodada foi interrompida para evitar novas tentativas às cegas. Peça para continuar.",
     CONTEXT_TOO_LARGE: "Esta conversa ainda é longa demais após a recuperação de contexto. Encurte sua mensagem ou inicie uma nova conversa.",
     CONTEXT_COMPACTION_FAILED: "Não foi possível compactar o contexto do modelo desta conversa.",
