@@ -1,5 +1,24 @@
-import { OAUTH_AUTH_KIND } from "@pi-desktop/shared";
+import { isStarAiProviderId, OAUTH_AUTH_KIND } from "@pi-desktop/shared";
 import { sameComposerModelId } from "./composer-models";
+
+/**
+ * Managed StarAI HTTP 403 means group/model/client access was denied rather
+ * than a user-configured API key being invalid. Older saved errors may only
+ * carry the sanitized transport message.
+ */
+export function isStarAiChatForbidden(input: {
+  code?: string | null;
+  message?: string | null;
+  providerId?: string | null;
+  providerStatus?: unknown;
+}): boolean {
+  if (input.code !== "PROVIDER_UNAUTHORIZED") return false;
+  if (isStarAiProviderId(input.providerId ?? undefined) && input.providerStatus === 403) return true;
+  return (
+    typeof input.message === "string" &&
+    input.message.includes("StarAI chat request failed (HTTP 403).")
+  );
+}
 
 type TranscriptMessage = {
   role: string;

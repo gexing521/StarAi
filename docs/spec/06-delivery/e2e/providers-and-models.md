@@ -11,13 +11,18 @@ Render the normal Composer toolbar for an active remote session that denies Stop
 
 In a packaged StarAI app, sign in with an account that can select
 `claude企业组`. In the Composer select Claude, that exact group and
-`claude-haiku-5-5`. Send an arithmetic question and verify the answer in the
-chat. Match its timestamp, account, group and model to a streaming
-`/pg/chat/completions` request in the relay log.
+`claude-haiku-5-5`. Start a fresh conversation and send three arithmetic
+prompts in order. Supply a starting value, then ask for two operations that
+depend on the preceding replies. Wait for each completed answer and check its
+value before sending the next prompt. Match all three timestamps, the account,
+group and model to streaming `/pg/chat/completions` requests in the relay log.
+For each request ID, record which channel completed the stream and whether
+an earlier channel rejected the request.
 
-`apps/desktop/test/star-ai-session.test.mjs` checks the outbound version,
-route and app identity headers. It also covers session refresh and a request
-bound to `claude企业组不限客户端` whose body names the enterprise group.
+`apps/desktop/test/star-ai-session.test.mjs` checks the outbound Claude Code
+client identity for Claude groups, the StarAI identity for every other group,
+session refresh, and a request bound to `claude企业组不限客户端` whose body
+names the enterprise group.
 
 ## E2E-USAGE-explicit-zero-cache
 

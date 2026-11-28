@@ -121,34 +121,79 @@ test("chat pins the origin, route, account and selected group", async () => {
   assert.deepEqual(JSON.parse(init.body), { ...body, group: route.group, model: route.model });
   assert.equal(init.signal, signal);
   assert.equal(init.redirect, "error");
+  assert.equal(init.headers.get("Accept"), "text/event-stream");
   assert.equal(init.headers.get("User-Agent"), `${STARAI_CLIENT_NAME}/0.0.1`);
   assert.equal(init.headers.get("X-StarAI-Client"), STARAI_CLIENT_ID);
   assert.equal(init.headers.get("X-StarAI-Version"), "0.0.1");
 });
 
-test("Claude enterprise chat adds its protocol and route headers only for the bound group", async () => {
+test("Claude groups send the Claude Code client identity and other groups keep the StarAI one", async () => {
   const requests = [];
   const account = new StarAiSession(async (url, init) => {
-    requests.push({ path: new URL(url).pathname, headers: init.headers });
     if (url.endsWith(STARAI_REFRESH)) return sessionReply();
+    requests.push({ path: new URL(url).pathname, headers: init.headers });
     return Response.json({});
   }, async () => true, "0.2.3");
   const signal = new AbortController().signal;
   const route = { accountId: 42, model: "claude-haiku-5-5", group: "claude企业组" };
   await account.submitChat(route, { messages: [], stream: true }, signal);
+  await account.submitChat({ ...route, group: "claude特价渠道" }, { messages: [] }, signal);
+  await account.submitChat({ ...route, group: "claude kiro企业正价号池" }, { messages: [] }, signal);
   await account.submitChat({ ...route, group: "claude企业组不限客户端" }, { group: route.group, messages: [] }, signal);
+  await account.submitChat({ ...route, group: "auto" }, { messages: [] }, signal);
+  await account.submitChat({ ...route, group: "default" }, { messages: [] }, signal);
 
-  const [refresh, enterprise, other] = requests;
-  assert.equal(enterprise.path, "/pg/chat/completions");
-  assert.equal(enterprise.headers.get("anthropic-version"), "2023-06-01");
-  assert.equal(enterprise.headers.get("X-StarAI-Route"), "claude-enterprise");
-  assert.equal(enterprise.headers.get("User-Agent"), "StarAI/0.2.3");
-  assert.equal(enterprise.headers.get("X-StarAI-Client"), "starai-desktop");
-  assert.equal(enterprise.headers.get("X-StarAI-Version"), "0.2.3");
-  assert.equal(enterprise.headers.get("Authorization"), "Bearer session-token");
-  for (const { headers } of [refresh, other]) {
-    assert.equal(headers.has("anthropic-version"), false);
-    assert.equal(headers.has("X-StarAI-Route"), false);
+  const [enterprise, special, kiro, unrestricted, auto, plain] = requests;
+  for (const bound of [enterprise, special, kiro, unrestricted]) {
+    assert.equal(bound.path, "/pg/chat/completions");
+    assert.equal(bound.headers.get("User-Agent"), "claude-cli/2.1.332 (external, sdk-cli)");
+    assert.equal(bound.headers.get("x-app"), "cli");
+    assert.equal(bound.headers.get("anthropic-version"), "2023-06-01");
+    assert.equal(bound.headers.get("anthropic-dangerous-direct-browser-access"), "true");
+    assert.equal(bound.headers.get("x-stainless-lang"), "js");
+    assert.equal(bound.headers.get("x-stainless-package-version"), "0.128.0");
+    assert.equal(bound.headers.get("x-stainless-runtime"), "node");
+    assert.equal(bound.headers.get("x-stainless-timeout"), "600");
+    assert.equal(bound.headers.get("X-StarAI-Client"), "starai-desktop");
+    assert.equal(bound.headers.get("X-StarAI-Version"), "0.2.3");
+    assert.equal(bound.headers.get("Authorization"), "Bearer session-token");
+  }
+  assert.equal(enterprise.headers.get("Accept"), "text/event-stream");
+  for (const generic of [auto, plain]) {
+    assert.equal(generic.headers.get("User-Agent"), "StarAI/0.2.3");
+    assert.equal(generic.headers.has("x-app"), false);
+    assert.equal(generic.headers.has("anthropic-version"), false);
+  }
+});
+
+test("Claude enterprise chat negotiates SSE on consecutive turns and JSON on a non-streaming turn", async () => {
+  const received = [];
+  const account = new StarAiSession(async (url, init) => {
+    if (url.endsWith(STARAI_REFRESH)) {
+      assert.equal(init.headers.get("Accept"), "application/json");
+      return sessionReply();
+    }
+    const { messages, stream } = JSON.parse(init.body);
+    const expected = stream === true ? "text/event-stream" : "application/json";
+    if (init.headers.get("Accept") !== expected) return new Response(null, { status: 406 });
+    received.push(messages);
+    return new Response(null, { headers: { "Content-Type": expected } });
+  }, async () => true);
+  const route = { accountId: 42, group: "claude企业组", model: "claude-haiku-5-5" };
+  const signal = new AbortController().signal;
+  const messages = [];
+  for (const [question, answer] of [["Start at seven.", "7"], ["Double it.", "14"], ["Add three.", "17"]]) {
+    messages.push({ role: "user", content: question });
+    const reply = await account.submitChat(route, { messages, stream: true }, signal);
+    assert.equal(reply.status, 200);
+    assert.equal(reply.headers.get("Content-Type"), "text/event-stream");
+    assert.deepEqual(received.at(-1), messages);
+    messages.push({ role: "assistant", content: answer });
+  }
+  for (const body of [{ messages, stream: false }, { messages }]) {
+    const reply = await account.submitChat(route, body, signal);
+    assert.equal(reply.status, 200);
+    assert.equal(reply.headers.get("Content-Type"), "application/json");
   }
 });
 
@@ -222,6 +267,68 @@ test("StarAI transport distinguishes unreachable network errors from explicit re
     mode = "relay502";
     const relayRes = await call();
     assert.equal(relayRes.status, 502);
+  } finally {
+    transport.close();
+  }
+});
+
+test("StarAI chat errors expose the relay request ID without forwarding upstream diagnostics", async () => {
+  const requestId = "20300102030405123456789abcd1234AbCd1234";
+  let reportedId = requestId;
+  const transport = createStarAiTransport(async () => Response.json({
+    error: { code: "client_not_allowed", message: "private upstream diagnostic" },
+  }, { status: 403, headers: { "X-Oneapi-Request-Id": reportedId } }));
+  try {
+    const route = await transport.bind({ accountId: 42, group: "claude企业组", models: ["claude-haiku-5-5"] });
+    route.commit();
+    for (const expectedId of [requestId, undefined]) {
+      reportedId = expectedId ?? "unexpected diagnostic text";
+      const response = await fetch(`${route.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${route.secretValue}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-haiku-5-5", messages: [] }),
+      });
+      assert.equal(response.status, 403);
+      const summary = "StarAI chat request failed (HTTP 403).";
+      assert.deepEqual(await response.json(), {
+        error: { message: expectedId ? `${summary} Request ID: ${expectedId}` : summary },
+      });
+    }
+  } finally {
+    transport.close();
+  }
+});
+
+test("StarAI transport returns 401 without upstream trace ID when aborted mid-flight", async () => {
+  const started = Promise.withResolvers();
+  const finishUpstream = Promise.withResolvers();
+  const transport = createStarAiTransport(async () => {
+    started.resolve();
+    return finishUpstream.promise;
+  });
+  try {
+    const first = await transport.bind({ accountId: 42, group: "default", models: ["model-a"] });
+    first.commit();
+    const pending = fetch(`${first.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${first.secretValue}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "model-a", messages: [] }),
+    });
+    await started.promise;
+    const second = await transport.bind({ accountId: 42, group: "other", models: ["model-b"] });
+    second.commit();
+    finishUpstream.resolve(new Response("ok", {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Oneapi-Request-Id": "20300102030405123456789abcd1234AbCd1234",
+      },
+    }));
+    const response = await pending;
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: { message: "The local StarAI connection has changed." },
+    });
   } finally {
     transport.close();
   }

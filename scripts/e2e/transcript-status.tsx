@@ -304,6 +304,29 @@ export async function transcriptStatusProbe() {
         `${mode}: failed turn has no empty toolbar`,
       );
     }
+    const relayFailure = "403 StarAI chat request failed (HTTP 403).";
+    const deniedCases = [
+      { providerId: "starai-managed-group", status: 403, detail: "403 Forbidden", denied: true },
+      { providerId: undefined, status: undefined, detail: relayFailure, denied: true },
+      { providerId: "starai-managed-group", status: 401, detail: "401 Unauthorized", denied: false },
+      { providerId: "other-provider", status: 403, detail: "403 Forbidden", denied: false },
+    ];
+    for (const { providerId, status, detail, denied } of deniedCases) {
+      await render({
+        messages: [user, { ...answer, providerId, status: "error", error: {
+          code: "PROVIDER_UNAUTHORIZED", message: detail,
+          details: status === undefined ? undefined : { providerStatus: status },
+        } }],
+        isRunning: false,
+      });
+      const card = host.querySelector(".message-error");
+      check(card?.querySelector("strong")?.textContent ===
+        (denied ? en.errors.starAiChatForbidden : en.errors.PROVIDER_UNAUTHORIZED),
+        `access summary for ${providerId ?? "saved StarAI error"} / ${status ?? "legacy"}`);
+      const showsSettings = [...(card?.querySelectorAll("button") ?? [])]
+        .some((button) => button.textContent === en.errors.action.openSettings);
+      check(showsSettings === !denied, `settings action for ${detail} / ${providerId ?? "legacy"}`);
+    }
     await render({ messages: [user, answer], isRunning: true });
     for (const phase of [
       "starting",

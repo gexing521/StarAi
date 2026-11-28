@@ -6,6 +6,7 @@ import {
   type StarAiCurrencyConfig,
   type StarAiGroup,
 } from "@pi-desktop/shared";
+import { isStarAiClaudeGroup, STARAI_CLAUDE_CODE_HEADERS } from "./star-ai-claude-headers.ts";
 
 export const STARAI_ORIGIN = "https://starlinkaisite.com";
 export const STARAI_COOKIE = "new_api_refresh";
@@ -55,8 +56,8 @@ export class StarAiSession {
   private request(path: string, init: RequestInit = {}, token?: string) {
     const headers = new Headers(init.headers);
     headers.set("Origin", STARAI_ORIGIN);
-    headers.set("Accept", "application/json");
-    headers.set("User-Agent", `${STARAI_CLIENT_NAME}/${this.clientVersion}`);
+    if (!headers.has("Accept")) headers.set("Accept", "application/json");
+    if (!headers.has("User-Agent")) headers.set("User-Agent", `${STARAI_CLIENT_NAME}/${this.clientVersion}`);
     headers.set("X-StarAI-Client", STARAI_CLIENT_ID);
     headers.set("X-StarAI-Version", this.clientVersion);
     if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -250,9 +251,11 @@ export class StarAiSession {
     const session = await this.session();
     if (!session || session.account.id !== route.accountId) throw required();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (route.group === "claude企业组") {
-      headers["anthropic-version"] = "2023-06-01";
-      headers["X-StarAI-Route"] = "claude-enterprise";
+    if (body.stream === true) headers.Accept = "text/event-stream";
+    // Claude groups only admit official Claude Code clients upstream, so their
+    // chat carries a Claude Code identity instead of the StarAI desktop one.
+    if (isStarAiClaudeGroup(route.group)) {
+      Object.assign(headers, STARAI_CLAUDE_CODE_HEADERS);
     }
     const result = await this.request("/pg/chat/completions", {
       method: "POST", headers, signal,

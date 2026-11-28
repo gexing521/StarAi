@@ -3432,6 +3432,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
     PROVIDER_SECRET_MISSING: "Add an API key for this AI provider before using it.",
     PROTOCOL_MISMATCH: "App components are out of sync. Reinstall or rebuild the app.",
     PROVIDER_UNAUTHORIZED: "The API key was rejected. Check it in Settings.",
+    starAiChatForbidden: "Access to this StarAI chat was denied. Ask your administrator whether this client can use the selected group and model.",
     PROVIDER_RATE_LIMITED: "The AI provider is rate-limiting requests. Wait a moment and try again.",
     PROVIDER_ERROR: "The AI provider returned an error.",
     NETWORK_ERROR: "Can't reach the AI provider. Check your network or base URL.",

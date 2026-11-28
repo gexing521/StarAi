@@ -3313,6 +3313,7 @@ sklm: {
     PROVIDER_SECRET_MISSING: "請先為此 AI 服務新增 API 金鑰。",
     PROTOCOL_MISMATCH: "應用元件版本不一致，請重新安裝或重新構建。",
     PROVIDER_UNAUTHORIZED: "API 金鑰被拒絕，請在設定中檢查。",
+    starAiChatForbidden: "StarAI 對話請求遭拒。請聯絡管理員，確認目前的用戶端是否有權使用所選群組和模型。",
     PROVIDER_RATE_LIMITED: "AI 服務觸發了限流，請稍後再試。",
     PROVIDER_ERROR: "AI 服務返回了錯誤。",
     NETWORK_ERROR: "無法連線 AI 服務，請檢查網路或介面地址。",

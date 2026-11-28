@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  isStarAiChatForbidden,
   messageHasTranscriptContent,
   vendorAccountOmitsSessionModel,
 } from "../lib/chat-launch-error";
@@ -155,6 +156,11 @@ export const ChatSurface = memo(function ChatSurface({
     : showVendorModelError
       ? "MODEL_NOT_CONFIGURED"
       : null;
+  const starAiNoticeForbidden = isStarAiChatForbidden({
+    code: noticeCode,
+    message: noticeError,
+    providerId: activeSession?.providerId,
+  });
   return (
     <div
       className={`chat-surface route-surface${sessionSwitching ? " session-switching" : ""}`}
@@ -227,9 +233,11 @@ export const ChatSurface = memo(function ChatSurface({
         <div className="chat-error-layer">
           <div className="chat-error-notice">
             <span title={noticeError}>
-              {noticeCode && i18nHasError(t, noticeCode)
-                ? t(`errors.${noticeCode}`)
-                : noticeError}
+              {starAiNoticeForbidden
+                ? t("errors.starAiChatForbidden")
+                : noticeCode && i18nHasError(t, noticeCode)
+                  ? t(`errors.${noticeCode}`)
+                  : noticeError}
               {showVendorModelError && !error && activeSession?.modelId ? (
                 <>
                   {" "}
@@ -237,9 +245,11 @@ export const ChatSurface = memo(function ChatSurface({
                 </>
               ) : null}
             </span>
-            {!isRemoteSession(activeSession) && (noticeCode === "MODEL_NOT_CONFIGURED" ||
-              noticeCode === "PROVIDER_SECRET_MISSING" ||
-              noticeCode === "PROVIDER_UNAUTHORIZED") && (
+            {!isRemoteSession(activeSession) &&
+              !starAiNoticeForbidden &&
+              (noticeCode === "MODEL_NOT_CONFIGURED" ||
+                noticeCode === "PROVIDER_SECRET_MISSING" ||
+                noticeCode === "PROVIDER_UNAUTHORIZED") && (
               <button
                 type="button"
                 className="chat-error-action"

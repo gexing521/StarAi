@@ -3277,6 +3277,7 @@ sklm: {
     "PROVIDER_SECRET_MISSING": "Fügen Sie einen API-Schlüssel für diesen KI-Anbieter hinzu, bevor Sie ihn verwenden.",
     "PROTOCOL_MISMATCH": "App-Komponenten sind nicht synchron. Installieren Sie die App neu oder erstellen Sie sie neu.",
     "PROVIDER_UNAUTHORIZED": "Der API-Schlüssel wurde abgelehnt. Überprüfen Sie es in den Einstellungen.",
+    starAiChatForbidden: "Der Zugriff auf diesen StarAI-Chat wurde verweigert. Klären Sie mit Ihrer Administration, ob dieser Client die gewählte Gruppe und das gewählte Modell verwenden darf.",
     "PROVIDER_RATE_LIMITED": "Der KI-Anbieter begrenzt Anfragen. Warten Sie einen Moment und versuchen Sie es erneut.",
     "PROVIDER_ERROR": "Der KI-Anbieter hat einen Fehler zurückgegeben.",
     "NETWORK_ERROR": "Der KI-Anbieter kann nicht erreicht werden. Überprüfen Sie Ihr Netzwerk oder Ihre Basis-URL.",

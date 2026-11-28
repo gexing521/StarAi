@@ -4,6 +4,7 @@ import test from "node:test";
 register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
 
 const {
+  isStarAiChatForbidden,
   messageHasTranscriptContent,
   vendorAccountOmitsSessionModel,
 } = await import("../src/lib/chat-launch-error.ts");
@@ -64,4 +65,52 @@ test("the chat surface shows that omission instead of an empty page", async () =
   assert.match(surface, /vendorAccountOmitsSessionModel\(/);
   assert.match(surface, /activeSession\.modelId/);
   assert.match(surface, /noticeError \?/);
+  assert.match(surface, /isStarAiChatForbidden\(/);
+  assert.match(surface, /errors\.starAiChatForbidden/);
+});
+
+test("StarAI HTTP 403 errors are recognized as access denials without matching 401 or other providers", () => {
+  assert.equal(
+    isStarAiChatForbidden({
+      code: "PROVIDER_UNAUTHORIZED",
+      providerId: "starai-managed-group",
+      providerStatus: 403,
+      message: "403 Forbidden",
+    }),
+    true,
+  );
+  assert.equal(
+    isStarAiChatForbidden({
+      code: "PROVIDER_UNAUTHORIZED",
+      message: "403 StarAI chat request failed (HTTP 403). Request ID: 123",
+    }),
+    true,
+  );
+  assert.equal(
+    isStarAiChatForbidden({
+      code: "PROVIDER_UNAUTHORIZED",
+      providerId: "starai-managed-group",
+      providerStatus: 401,
+      message: "401 Unauthorized",
+    }),
+    false,
+  );
+  assert.equal(
+    isStarAiChatForbidden({
+      code: "PROVIDER_UNAUTHORIZED",
+      providerId: "other-provider",
+      providerStatus: 403,
+      message: "403 Forbidden",
+    }),
+    false,
+  );
+  assert.equal(
+    isStarAiChatForbidden({
+      code: "PROVIDER_ERROR",
+      providerId: "starai-managed-group",
+      providerStatus: 403,
+      message: "StarAI chat request failed (HTTP 403).",
+    }),
+    false,
+  );
 });

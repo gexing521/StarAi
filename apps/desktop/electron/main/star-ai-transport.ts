@@ -104,11 +104,18 @@ async function handleChat(
     if (!response.destroyed) response.destroy();
     return;
   }
-  if (signal.aborted || !upstream.ok) {
+  if (signal.aborted) {
     await upstream.body?.cancel().catch(() => {});
-    // Upstream diagnostics can include provider request headers. Expose only the status.
+    return fail(response, 401, "The local StarAI connection has changed.");
+  }
+  if (!upstream.ok) {
+    await upstream.body?.cancel().catch(() => {});
+    // The relay generates a 23-digit timestamp followed by 16 alphanumeric characters.
+    // Its error body can contain provider credentials, so only expose the status and trace ID.
     const status = upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502;
-    return fail(response, status, `StarAI chat request failed (HTTP ${status}).`);
+    const requestId = upstream.headers.get("X-Oneapi-Request-Id");
+    const trace = requestId && /^\d{23}[A-Za-z0-9]{16}$/.test(requestId) ? ` Request ID: ${requestId}` : "";
+    return fail(response, status, `StarAI chat request failed (HTTP ${status}).${trace}`);
   }
   const mime = upstream.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
   if (!upstream.body || (mime !== "application/json" && mime !== "text/event-stream")) {

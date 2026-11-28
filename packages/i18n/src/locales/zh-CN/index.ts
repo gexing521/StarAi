@@ -3363,6 +3363,7 @@ sklm: {
     PROVIDER_SECRET_MISSING: "请先为此 AI 服务添加 API 密钥。",
     PROTOCOL_MISMATCH: "应用组件版本不一致，请重新安装或重新构建。",
     PROVIDER_UNAUTHORIZED: "API 密钥被拒绝，请在设置中检查。",
+    starAiChatForbidden: "StarAI 对话请求被拒绝。请联系管理员，确认当前客户端是否有权使用所选分组和模型。",
     PROVIDER_RATE_LIMITED: "站点好像有点完犊子，等一下下 (´；ω；｀)",
     PROVIDER_ERROR: "站点好像有点完犊子，等一下下 (´；ω；｀)",
     NETWORK_ERROR: "好好检查一下你的网络，开梯子的关梯子，关梯子的开梯子，用无线的切流量 (；′⌒`)",

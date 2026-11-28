@@ -12,6 +12,8 @@ const relay = "data:text/javascript," + encodeURIComponent(`
   let partition;
   export function setPartition(value) { partition = value; }
   export function starAiPartition() { return partition; }
+  export function closeStarAiTopUp() {}
+  export function openStarAiTopUp() { throw new Error("Unexpected top-up window during sign-in."); }
   export function hasStarAiCookie(profile) { return profile.signedIn; }
   export async function openStarAiLogin(_parent, profile) {
     profile.prompts++;
@@ -21,7 +23,9 @@ const relay = "data:text/javascript," + encodeURIComponent(`
 `);
 const hooks = registerHooks({ resolve(specifier, context, next) {
   if (specifier === "electron") return { url: electron, shortCircuit: true };
-  if (specifier === "./star-ai-login") return { url: relay, shortCircuit: true };
+  if (specifier === "./star-ai-login" || specifier === "./star-ai-topup") {
+    return { url: relay, shortCircuit: true };
+  }
   if (context.parentURL?.includes("/electron/main/") && /^\.\/star-ai-[\w-]+$/.test(specifier)) {
     return next(specifier + ".ts", context);
   }

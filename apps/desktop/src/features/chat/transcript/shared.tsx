@@ -16,6 +16,7 @@ import {
   formatCompactTokenCount,
   isCertificateVerificationError,
 } from "@pi-desktop/shared";
+import { isStarAiChatForbidden } from "../../../lib/chat-launch-error";
 import { useOpenChatFileRef, useOpenPreviewTarget } from "../../../hooks/use-preview-target";
 import { useChatFileMenu } from "../../../hooks/use-chat-file-menu";
 import { ContextMenu } from "../../../components/ContextMenu";
@@ -236,32 +237,28 @@ export function AssistantErrorMessage({ message }: { message: UiMessage }) {
   );
   const error = message.error;
   if (!error || dismissed) return null;
-  const networkDetails = error.details;
+  const details = error.details && typeof error.details === "object"
+    ? error.details as { networkCode?: unknown; providerStatus?: unknown }
+    : undefined;
+  const networkCode = typeof details?.networkCode === "string" ? details.networkCode : undefined;
   const certificateFailure =
-    error.code === "NETWORK_ERROR" &&
-    networkDetails !== null && typeof networkDetails === "object" &&
-    isCertificateVerificationError(
-      (networkDetails as { networkCode?: unknown }).networkCode,
-    );
-  const localizedKey = certificateFailure
-    ? "errors.providerCertificate"
-    : `errors.${error.code}`;
+    error.code === "NETWORK_ERROR" && isCertificateVerificationError(networkCode);
+  const starAiForbidden = isStarAiChatForbidden({
+    code: error.code,
+    message: error.message,
+    providerId: message.providerId,
+    providerStatus: details?.providerStatus,
+  });
+  let localizedKey = `errors.${error.code}`;
+  if (certificateFailure) localizedKey = "errors.providerCertificate";
+  if (starAiForbidden) localizedKey = "errors.starAiChatForbidden";
   const localized = t(localizedKey);
   const summary = localized === localizedKey ? t("chat.responseFailed") : localized;
-  const configurationError = [
+  const configurationError = !starAiForbidden && [
     "MODEL_NOT_CONFIGURED",
     "PROVIDER_SECRET_MISSING",
     "PROVIDER_UNAUTHORIZED",
   ].includes(error.code);
-  // The transport errno is what separates "DNS did not resolve" from "TLS was
-  // rejected" from "the socket died" for the user; the localized summary can
-  // only say "can't reach the provider" (issue #234).
-  const networkCode = (() => {
-    const details = error.details;
-    if (!details || typeof details !== "object") return undefined;
-    const value = (details as { networkCode?: unknown }).networkCode;
-    return typeof value === "string" ? value : undefined;
-  })();
 
   return (
     <section className="message-error" aria-label={t("chat.responseError")}>
@@ -272,7 +269,7 @@ export function AssistantErrorMessage({ message }: { message: UiMessage }) {
         <div className="message-error-copy">
           <strong>{summary}</strong>
           <code>
-            {error.code}
+            {starAiForbidden ? "HTTP 403" : error.code}
             {networkCode ? ` · ${networkCode}` : ""}
           </code>
         </div>

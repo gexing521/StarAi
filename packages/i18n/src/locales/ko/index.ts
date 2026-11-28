@@ -3314,6 +3314,7 @@ importConfirm: "가져온 확장은 에이전트 프로세스 안에서 에이�
     PROVIDER_SECRET_MISSING: "사용하기 전에 이 AI 프로바이더의 API 키를 추가하세요.",
     PROTOCOL_MISMATCH: "앱 구성 요소가 일치하지 않습니다. 앱을 다시 설치하거나 다시 빌드하세요.",
     PROVIDER_UNAUTHORIZED: "API 키가 거부되었습니다. 설정에서 확인하세요.",
+    starAiChatForbidden: "StarAI 대화 요청이 거부되었습니다. 이 클라이언트에서 선택한 그룹과 모델을 사용할 수 있는지 관리자에게 문의하세요.",
     PROVIDER_RATE_LIMITED: "AI 프로바이더가 요청을 제한하고 있습니다. 잠시 후 다시 시도하세요.",
     PROVIDER_ERROR: "AI 프로바이더에서 오류를 반환했습니다.",
     NETWORK_ERROR: "AI 프로바이더에 연결할 수 없습니다. 네트워크 또는 기본 URL을 확인하세요.",
